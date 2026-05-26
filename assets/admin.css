@@ -1,0 +1,638 @@
+/* Levers - settings screen styling. */
+
+.levers-wrap {
+	max-width: 100%;
+}
+
+/* Keep Toastr notifications clear of the WordPress admin bar. */
+#toast-container.toast-top-right {
+	top: 46px;
+	right: 16px;
+}
+
+/* Header */
+.levers-header {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin: 22px 0 6px;
+}
+
+.levers-header__icon {
+	display: flex;
+	flex: 0 0 auto;
+}
+
+.levers-header__icon img {
+	display: block;
+	width: 64px;
+	height: 64px;
+	border-radius: 14px;
+}
+
+.levers-header__text h1 {
+	margin: 0;
+	padding: 0;
+	font-size: 23px;
+	line-height: 1.2;
+}
+
+.levers-header__text p {
+	margin: 4px 0 0;
+	color: #646970;
+	font-size: 13px;
+}
+
+/* Category groups */
+.levers-list {
+	margin-top: 18px;
+}
+
+.levers-category {
+	margin-bottom: 26px;
+	/* Offset for "Jump to" anchor scrolls so the heading isn't tucked
+	 * under the WordPress admin bar. */
+	scroll-margin-top: 40px;
+}
+
+/* Per-category accent colors, used by the heading, the lever icon
+ * tiles inside that section, and the matching Jump To entry. */
+.levers-cat--branding          { --levers-cat-color: #7c3aed; --levers-cat-bg: #f3eeff; }
+.levers-cat--wordpress-cleanup { --levers-cat-color: #2563eb; --levers-cat-bg: #eff6ff; }
+.levers-cat--frontend          { --levers-cat-color: #0891b2; --levers-cat-bg: #ecfeff; }
+.levers-cat--security          { --levers-cat-color: #dc2626; --levers-cat-bg: #fef2f2; }
+.levers-cat--performance       { --levers-cat-color: #ea580c; --levers-cat-bg: #fff7ed; }
+.levers-cat--seo               { --levers-cat-color: #16a34a; --levers-cat-bg: #f0fdf4; }
+.levers-cat--spam              { --levers-cat-color: #ca8a04; --levers-cat-bg: #fefce8; }
+.levers-cat--maintenance       { --levers-cat-color: #475569; --levers-cat-bg: #f1f5f9; }
+.levers-cat--admin-tools       { --levers-cat-color: #db2777; --levers-cat-bg: #fdf2f8; }
+
+.levers-category__title {
+	margin: 0 0 14px;
+	padding: 0;
+	font-size: 20px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #1d2327;
+}
+
+.levers-category__items {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+}
+
+/* Individual lever row */
+.levers-item {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 16px 20px;
+	border-top: 1px solid #f0f0f1;
+}
+
+.levers-item:first-child {
+	border-top: 0;
+}
+
+.levers-item__icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 40px;
+	height: 40px;
+	border-radius: 8px;
+	background: var(--levers-cat-bg, #f0f6fc);
+	color: var(--levers-cat-color, #2271b1);
+}
+
+.levers-item--unavailable .levers-toggle {
+	cursor: not-allowed;
+}
+
+/* Fade only the track, not the whole label - otherwise the tooltip
+ * pseudo-elements inherit the faded opacity too. */
+.levers-item--unavailable .levers-toggle__track {
+	opacity: 0.5;
+}
+
+.levers-toggle input:disabled {
+	cursor: not-allowed;
+}
+
+.levers-item__inline-note {
+	font-size: 13px;
+	color: #996800;
+}
+
+/* Two-column layout: main lever list + branded sidebar */
+.levers-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 280px;
+	gap: 28px;
+	margin-top: 20px;
+	align-items: start;
+}
+
+.levers-main {
+	min-width: 0;
+}
+
+/* Layout's margin-top already handles top spacing - prevent doubling. */
+.levers-layout .levers-list {
+	margin-top: 0;
+}
+
+.levers-sidebar {
+	position: sticky;
+	top: 50px;
+	margin-top: 38px;
+	padding: 22px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 900px) {
+	.levers-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.levers-sidebar {
+		position: static;
+		margin-top: 0;
+	}
+}
+
+.levers-sidebar__brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+/* CSS-only app-icon-style brand mark: a tiny "on" toggle inside a
+ * dark-navy rounded square. */
+.levers-sidebar__brand-mark {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 48px;
+	height: 48px;
+	background: #0f172a;
+	border-radius: 12px;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.06),
+		0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.levers-sidebar__brand-track {
+	position: relative;
+	display: block;
+	width: 32px;
+	height: 16px;
+	background: #3958E9;
+	border-radius: 999px;
+}
+
+.levers-sidebar__brand-thumb {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	width: 12px;
+	height: 12px;
+	background: #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.levers-sidebar__brand-text h1 {
+	margin: 0;
+	padding: 0;
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #1d2327;
+}
+
+.levers-sidebar__brand-text p {
+	margin: 4px 0 0;
+	font-size: 12px;
+	color: #646970;
+}
+
+.levers-sidebar__brand-text a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.levers-sidebar__brand-text a:hover,
+.levers-sidebar__brand-text a:focus {
+	color: #2271b1;
+}
+
+.levers-sidebar__tagline {
+	margin: 16px 0 0;
+	padding-top: 16px;
+	border-top: 1px solid #f0f0f1;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #646970;
+}
+
+/* Chat-bubble-style tagline quote */
+.levers-sidebar__quote {
+	margin: 18px 0 0;
+}
+
+.levers-sidebar__quote-bubble {
+	position: relative;
+	margin: 0;
+	padding: 12px 14px;
+	background: #f0f0f1;
+	border-radius: 12px;
+	font-size: 13px;
+	line-height: 1.45;
+	font-style: italic;
+	color: #2c3338;
+}
+
+/* Downward-pointing tail under the bubble, like a speech bubble. */
+.levers-sidebar__quote-bubble::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 22px;
+	width: 0;
+	height: 0;
+	border: 8px solid transparent;
+	border-top-color: #f0f0f1;
+	border-bottom: 0;
+}
+
+.levers-sidebar__quote-author {
+	display: block;
+	margin: 14px 0 0;
+	font-style: normal;
+	font-size: 11px;
+	color: #646970;
+}
+
+.levers-jump {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid #f0f0f1;
+}
+
+.levers-jump__title {
+	margin: 0 0 6px;
+	padding: 0;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: #646970;
+}
+
+.levers-jump ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.levers-jump li {
+	margin: 0;
+}
+
+.levers-jump a {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0 -8px;
+	padding: 7px 10px;
+	border-radius: 6px;
+	font-size: 13px;
+	text-decoration: none;
+	color: #1d2327;
+	transition: background 0.12s ease, color 0.12s ease;
+}
+
+.levers-jump a:hover,
+.levers-jump a:focus {
+	background: #f0f6fc;
+}
+
+.levers-jump__icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 18px;
+	color: var(--levers-cat-color, #2271b1);
+}
+
+.levers-jump__label {
+	flex: 1 1 auto;
+}
+
+.levers-item__info {
+	flex: 1 1 auto;
+}
+
+.levers-item__title {
+	display: block;
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+	cursor: pointer;
+}
+
+.levers-item__desc {
+	margin: 3px 0 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #646970;
+}
+
+/* Toggle switch */
+.levers-toggle {
+	position: relative;
+	display: inline-flex;
+	flex: 0 0 auto;
+	cursor: pointer;
+}
+
+/* Visually hidden but still focusable - keeps WP admin's heavy disabled-
+ * checkbox styling (background, border, shadow) out of the way entirely. */
+.levers-toggle input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.levers-toggle__track {
+	display: block;
+	width: 44px;
+	height: 24px;
+	background: #c3c4c7;
+	border-radius: 999px;
+	transition: background 0.15s ease;
+}
+
+.levers-toggle__thumb {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 18px;
+	height: 18px;
+	background: #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+	transition: transform 0.15s ease;
+}
+
+.levers-toggle input:checked ~ .levers-toggle__track {
+	background: #3958E9;
+}
+
+.levers-toggle input:checked ~ .levers-toggle__track .levers-toggle__thumb {
+	transform: translateX(20px);
+}
+
+.levers-toggle input:focus-visible ~ .levers-toggle__track {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+/* Hover tooltip for an unavailable lever's toggle */
+.levers-toggle[data-tooltip]::after,
+.levers-toggle[data-tooltip]::before {
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+	z-index: 10;
+}
+
+.levers-toggle[data-tooltip]::after {
+	content: attr(data-tooltip);
+	position: absolute;
+	bottom: calc(100% + 8px);
+	right: 0;
+	padding: 6px 10px;
+	background: #1d2327;
+	color: #fff;
+	border-radius: 4px;
+	font-size: 12px;
+	line-height: 1.3;
+	white-space: nowrap;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.levers-toggle[data-tooltip]::before {
+	content: "";
+	position: absolute;
+	bottom: calc(100% + 4px);
+	right: 14px;
+	border: 4px solid transparent;
+	border-top-color: #1d2327;
+}
+
+.levers-toggle[data-tooltip]:hover::after,
+.levers-toggle[data-tooltip]:hover::before {
+	opacity: 1;
+}
+
+/* Lever heading: title plus any inline extra (e.g. the ban-log link) */
+.levers-item__heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.levers-extra-sep {
+	color: #c3c4c7;
+}
+
+.levers-favicon-preview {
+	display: inline-block;
+	vertical-align: -2px;
+	width: 14px;
+	height: 14px;
+	border-radius: 3px;
+}
+
+.levers-favicon-link {
+	font-size: 13px;
+	text-decoration: none;
+}
+
+.levers-favicon-link--remove {
+	color: #b32d2e;
+}
+
+.levers-banlog-link {
+	font-size: 13px;
+	text-decoration: none;
+}
+
+/* Ban-log modal */
+.levers-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.levers-modal[hidden] {
+	display: none;
+}
+
+.levers-modal__overlay {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+}
+
+.levers-modal__panel {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: min(760px, 92vw);
+	max-height: 84vh;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 12px 44px rgba(0, 0, 0, 0.3);
+}
+
+.levers-modal__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 20px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.levers-modal__head h2 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.levers-modal__close {
+	background: none;
+	border: 0;
+	padding: 0;
+	width: 30px;
+	height: 30px;
+	font-size: 22px;
+	line-height: 1;
+	color: #646970;
+	cursor: pointer;
+}
+
+.levers-modal__close:hover {
+	color: #1d2327;
+}
+
+.levers-modal__tools {
+	padding: 12px 20px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.levers-modal__tools input[type="search"] {
+	width: 100%;
+}
+
+.levers-modal__body {
+	padding: 4px 20px 20px;
+	overflow-y: auto;
+}
+
+.levers-banlog-table {
+	margin-top: 12px;
+}
+
+.levers-banlog-table .levers-banlog-action {
+	text-align: right;
+	width: 1%;
+	white-space: nowrap;
+}
+
+.levers-banlog-empty {
+	margin: 0;
+	padding: 28px 0;
+	color: #646970;
+	text-align: center;
+}
+
+/* Header & footer scripts modal */
+.levers-scripts__intro {
+	margin: 8px 0 12px;
+	color: #50575e;
+	font-size: 13px;
+}
+
+.levers-scripts__warning {
+	margin: 0 0 12px;
+	padding: 10px 12px;
+	background: #fef3c7;
+	border-left: 3px solid #d97706;
+	border-radius: 4px;
+	color: #92400e;
+	font-size: 13px;
+}
+
+.levers-scripts__field {
+	display: block;
+	margin: 12px 0;
+}
+
+.levers-scripts__label {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.levers-scripts__hint {
+	font-weight: 400;
+	font-size: 12px;
+	color: #646970;
+}
+
+.levers-scripts__field textarea {
+	width: 100%;
+	min-height: 80px;
+	padding: 8px 10px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.5;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fafafa;
+	resize: vertical;
+}
+
+.levers-scripts__field textarea:focus {
+	border-color: #3958E9;
+	outline: 0;
+	box-shadow: 0 0 0 1px #3958E9;
+}
+
+.levers-scripts__actions {
+	margin-top: 14px;
+	text-align: right;
+}
