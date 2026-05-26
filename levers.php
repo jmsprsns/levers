@@ -49,6 +49,36 @@ function levers() {
 add_action( 'plugins_loaded', 'levers' );
 
 /**
+ * Inject our plugin icon into the update_plugins transient so the WordPress
+ * core updates screen (wp-admin/update-core.php) shows it next to the
+ * Levers row instead of the generic dashicons-admin-plugins placeholder.
+ */
+add_filter( 'site_transient_update_plugins', function ( $transient ) {
+	if ( ! is_object( $transient ) || empty( $transient->response ) || ! is_array( $transient->response ) ) {
+		return $transient;
+	}
+
+	$slug = plugin_basename( LEVERS_FILE );
+
+	if ( ! isset( $transient->response[ $slug ] ) || ! is_object( $transient->response[ $slug ] ) ) {
+		return $transient;
+	}
+
+	$icon_url = LEVERS_URL . 'images/plugin-icon.png';
+
+	$icons = isset( $transient->response[ $slug ]->icons ) && is_array( $transient->response[ $slug ]->icons )
+		? $transient->response[ $slug ]->icons
+		: array();
+
+	$icons['default'] = $icon_url;
+	$icons['1x']      = $icon_url;
+
+	$transient->response[ $slug ]->icons = $icons;
+
+	return $transient;
+} );
+
+/**
  * Clear Levers' scheduled events when the plugin is deactivated.
  */
 function levers_deactivate() {
