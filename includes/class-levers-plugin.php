@@ -112,6 +112,8 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-enable-post-duplication.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-admin-transitions.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-header-footer-scripts.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-custom-frontend-css.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-custom-admin-css.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-hide-admin-footer.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-skip-admin-email-check.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-allow-sanitized-svg.php';
@@ -188,6 +190,8 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Enable_Post_Duplication() );
 		$this->register( new Levers_Lever_Disable_Admin_Transitions() );
 		$this->register( new Levers_Lever_Header_Footer_Scripts() );
+		$this->register( new Levers_Lever_Custom_Frontend_Css() );
+		$this->register( new Levers_Lever_Custom_Admin_Css() );
 		$this->register( new Levers_Lever_Force_Ssl() );
 		$this->register( new Levers_Lever_Fix_Insecure_Content() );
 		$this->register( new Levers_Lever_Hide_Admin_Footer() );
