@@ -8,6 +8,27 @@
 		return;
 	}
 
+	// Reload the page shortly after the last successful toggle so render_extra()
+	// outputs (ban-log link, favicon picker, modal triggers, etc.) reflect the
+	// new state. Rapid successive toggles keep canceling the pending reload so
+	// the user can flip several switches in a row before the page jumps.
+	var RELOAD_DELAY_MS = 1000;
+	var reloadTimer     = null;
+
+	function cancelPendingReload() {
+		if ( null !== reloadTimer ) {
+			window.clearTimeout( reloadTimer );
+			reloadTimer = null;
+		}
+	}
+
+	function schedulePendingReload() {
+		cancelPendingReload();
+		reloadTimer = window.setTimeout( function () {
+			window.location.reload();
+		}, RELOAD_DELAY_MS );
+	}
+
 	function format( template, value ) {
 		return String( template ).replace( '%s', value );
 	}
@@ -34,6 +55,10 @@
 			var nowOn    = checkbox.checked;
 			var wasOn    = ! nowOn; // The change just happened; previous was the opposite.
 
+			// A new toggle is starting -- cancel any pending reload from a
+			// prior toggle so we don't interrupt this request mid-flight.
+			cancelPendingReload();
+
 			checkbox.disabled = true;
 
 			var body = new URLSearchParams();
@@ -55,6 +80,7 @@
 						var responseTitle = ( res.data && res.data.title ) ? res.data.title : title;
 						var template      = nowOn ? cfg.strings.enabled : cfg.strings.disabled;
 						toast( 'success', format( template, responseTitle ) );
+						schedulePendingReload();
 					} else {
 						checkbox.checked = wasOn;
 						var msg = ( res && res.data && res.data.message ) || format( cfg.strings.failed, title );
