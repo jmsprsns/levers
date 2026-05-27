@@ -208,23 +208,20 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function run() {
-		// Cache-plugin integrations: each page cache short-circuits the request
-		// before plugins_loaded fires, so for a bad-bot request to actually hit
-		// this lever, the cache layer must be told to bypass cache for our UAs.
-		// Each integration is a no-op when its target plugin isn't installed.
+		// Filter registration is safe at plugins_loaded - it's just adding a
+		// callback, doesn't touch WP Rocket's container.
 		$this->ensure_rocket_filter();
 
-		if ( ! get_option( self::ROCKET_MARK ) ) {
-			$this->rebuild_rocket();
-		}
-		if ( ! get_option( self::W3TC_MARK ) ) {
-			$this->integrate_w3tc();
-		}
-		if ( ! get_option( self::WPSC_MARK ) ) {
-			$this->integrate_wpsc();
-		}
-		if ( ! get_option( self::LITESPEED_MARK ) ) {
-			$this->integrate_litespeed();
+		// CRITICAL: cache-plugin integrations MUST defer to `init`. Cache plugins
+		// (WP Rocket especially) finish bootstrapping their DI containers on
+		// plugins_loaded too, and calling their regen helpers before they're
+		// ready throws fatals (rocket_generate_advanced_cache_file() -> ->get()
+		// on null). Hook the integration pass at init priority 99 so every
+		// plugin has had a chance to come up.
+		if ( did_action( 'init' ) ) {
+			$this->maybe_integrate_caches();
+		} elseif ( ! has_action( 'init', array( $this, 'maybe_integrate_caches' ) ) ) {
+			add_action( 'init', array( $this, 'maybe_integrate_caches' ), 99 );
 		}
 
 		if ( empty( $_SERVER['HTTP_USER_AGENT'] ) ) {
@@ -237,6 +234,29 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 			if ( '' !== $pattern && false !== stripos( $ua, $pattern ) ) {
 				$this->block();
 			}
+		}
+	}
+
+	/**
+	 * Per-request idempotent cache integration. Called from `init` (deferred
+	 * from run()) so cache plugins are fully bootstrapped. Each per-plugin
+	 * integration is itself guarded by a marker option, so this is a cheap
+	 * no-op once everything is in sync.
+	 *
+	 * @return void
+	 */
+	public function maybe_integrate_caches() {
+		if ( ! get_option( self::ROCKET_MARK ) ) {
+			$this->rebuild_rocket();
+		}
+		if ( ! get_option( self::W3TC_MARK ) ) {
+			$this->integrate_w3tc();
+		}
+		if ( ! get_option( self::WPSC_MARK ) ) {
+			$this->integrate_wpsc();
+		}
+		if ( ! get_option( self::LITESPEED_MARK ) ) {
+			$this->integrate_litespeed();
 		}
 	}
 
@@ -308,11 +328,20 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 		if ( ! function_exists( 'rocket_generate_advanced_cache_file' ) ) {
 			return;
 		}
-		rocket_generate_advanced_cache_file();
-		if ( function_exists( 'rocket_generate_config_file' ) ) {
-			rocket_generate_config_file();
+		// WP Rocket's regen helpers reach into its DI container; if WP Rocket
+		// is only partially bootstrapped (e.g. activating mid-request, or a
+		// hook firing too early on a future version) the container is null
+		// and ->get() fatals. Swallow it so we never crash the request; the
+		// marker stays unset so we'll retry next request.
+		try {
+			rocket_generate_advanced_cache_file();
+			if ( function_exists( 'rocket_generate_config_file' ) ) {
+				rocket_generate_config_file();
+			}
+			update_option( self::ROCKET_MARK, 1, false );
+		} catch ( \Throwable $e ) {
+			// Intentionally silent.
 		}
-		update_option( self::ROCKET_MARK, 1, false );
 	}
 
 	/**
