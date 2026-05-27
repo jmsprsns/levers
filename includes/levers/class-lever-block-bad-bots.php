@@ -34,6 +34,9 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 	/** Nonce action for the toggle AJAX endpoint. */
 	const NONCE = 'levers_block_bad_bots_toggle';
 
+	/** Flag set once WP Rocket's advanced-cache.php has been regenerated with our UAs. */
+	const ROCKET_MARK = 'levers_block_bad_bots_rocket_integrated';
+
 	/**
 	 * Always-on AJAX wiring (regardless of lever state) - the editor needs
 	 * to be reachable so users can prep their list before flipping the
@@ -193,6 +196,19 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function run() {
+		// WP Rocket integration: tell its page cache to bypass these UAs so the
+		// request reaches PHP and this lever can fire. Without this, cached
+		// pages are served from disk by nginx before WordPress boots, and the
+		// lever never runs - exactly the failure mode that surfaced on prod.
+		$this->ensure_rocket_filter();
+
+		// First request after enabling (or after WP Rocket is installed later):
+		// regenerate WP Rocket's compiled cache config so our UAs take effect
+		// immediately instead of waiting for the next WP Rocket settings save.
+		if ( ! get_option( self::ROCKET_MARK ) ) {
+			$this->rebuild_rocket();
+		}
+
 		if ( empty( $_SERVER['HTTP_USER_AGENT'] ) ) {
 			return;
 		}
@@ -204,6 +220,84 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 				$this->block();
 			}
 		}
+	}
+
+	/**
+	 * Called once when the lever is toggled on. Force a fresh integration with
+	 * WP Rocket so its cache config knows about our UAs without waiting for
+	 * the next page load.
+	 */
+	public function on_enable() {
+		delete_option( self::ROCKET_MARK );
+		$this->ensure_rocket_filter();
+		$this->rebuild_rocket();
+	}
+
+	/**
+	 * Called once when the lever is toggled off. Rebuild WP Rocket's cache
+	 * config WITHOUT our filter registered so our UAs are dropped from its
+	 * reject list and normal caching resumes for them.
+	 */
+	public function on_disable() {
+		delete_option( self::ROCKET_MARK );
+		if ( function_exists( 'rocket_generate_advanced_cache_file' ) ) {
+			rocket_generate_advanced_cache_file();
+		}
+		if ( function_exists( 'rocket_generate_config_file' ) ) {
+			rocket_generate_config_file();
+		}
+	}
+
+	/**
+	 * Add our patterns to WP Rocket's reject-UA filter (idempotent).
+	 *
+	 * @return void
+	 */
+	private function ensure_rocket_filter() {
+		if ( ! has_filter( 'rocket_cache_reject_ua', array( $this, 'rocket_reject_ua' ) ) ) {
+			add_filter( 'rocket_cache_reject_ua', array( $this, 'rocket_reject_ua' ) );
+		}
+	}
+
+	/**
+	 * Regenerate WP Rocket's compiled cache files so the reject-UA list on
+	 * disk picks up our patterns. No-op when WP Rocket isn't active; the
+	 * marker is only set on a successful rebuild so we'll try again next
+	 * request if WP Rocket arrives later.
+	 *
+	 * @return void
+	 */
+	private function rebuild_rocket() {
+		if ( ! function_exists( 'rocket_generate_advanced_cache_file' ) ) {
+			return;
+		}
+		rocket_generate_advanced_cache_file();
+		if ( function_exists( 'rocket_generate_config_file' ) ) {
+			rocket_generate_config_file();
+		}
+		update_option( self::ROCKET_MARK, 1, false );
+	}
+
+	/**
+	 * Filter callback - merge our patterns into WP Rocket's reject-UA list.
+	 * Patterns are regex-escaped because WP Rocket compiles the list into a
+	 * single `#(?:p1|p2|...)#i` regex.
+	 *
+	 * @param array $ua_list WP Rocket's current reject-UA list.
+	 * @return array
+	 */
+	public function rocket_reject_ua( $ua_list ) {
+		$patterns = $this->patterns();
+		if ( empty( $patterns ) ) {
+			return (array) $ua_list;
+		}
+		$escaped = array_map(
+			static function ( $p ) {
+				return preg_quote( $p, '#' );
+			},
+			$patterns
+		);
+		return array_merge( (array) $ua_list, $escaped );
 	}
 
 	/**
