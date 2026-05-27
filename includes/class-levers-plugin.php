@@ -91,6 +91,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-xmlrpc.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-force-ssl.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-limit-login-attempts.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-block-bad-bots.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-close-comment-spam.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-prevent-blog-spam.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-remove-comment-url-field.php';
@@ -171,6 +172,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Remove_Root_Info_Files() );
 		$this->register( new Levers_Lever_Disable_Directory_Browsing() );
 		$this->register( new Levers_Lever_Limit_Login_Attempts() );
+		$this->register( new Levers_Lever_Block_Bad_Bots() );
 		$this->register( new Levers_Lever_Close_Comment_Spam() );
 		$this->register( new Levers_Lever_Prevent_Blog_Spam() );
 		$this->register( new Levers_Lever_Remove_Comment_Url_Field() );

@@ -576,6 +576,25 @@
 	text-align: center;
 }
 
+/* Block bad bots modal */
+.levers-bad-bots-table {
+	margin-top: 12px;
+}
+
+.levers-bad-bots-table .levers-bad-bots-table__check {
+	width: 1%;
+	text-align: center;
+	white-space: nowrap;
+}
+
+.levers-bad-bots-table .levers-bad-bots-table__ua {
+	white-space: nowrap;
+}
+
+.levers-bad-bots-table .levers-bad-bots-table__ua code {
+	font-size: 12px;
+}
+
 /* Header & footer scripts modal */
 .levers-scripts__intro {
 	margin: 8px 0 12px;
