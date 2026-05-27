@@ -3,11 +3,11 @@
  * Plugin Name:       Levers
  * Plugin URI:        https://www.contentpowered.com
  * Description:       Tweak WordPress with recommended settings to improve usability, security, performance, reduce spam, fix bugs and more - one lever at a time.
- * Version:           1.0.4
+ * Version:           1.0.5
  * Requires at least: 5.8
  * Requires PHP:      7.2
  * Author:            Content Powered
- * Author URI:        https://www.contentpowered.com
+ * Author URI:        https://leverswp.com/
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       levers
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'LEVERS_VERSION', '1.0.4' );
+define( 'LEVERS_VERSION', '1.0.5' );
 define( 'LEVERS_FILE', __FILE__ );
 define( 'LEVERS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LEVERS_URL', plugin_dir_url( __FILE__ ) );
