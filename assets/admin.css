@@ -10,6 +10,13 @@
 	right: 16px;
 }
 
+/* Toastr ships with 0.8 default opacity (1.0 on hover). Force fully
+ * opaque so the toasts read clearly against any background. */
+#toast-container > div {
+	opacity: 1;
+	filter: alpha(opacity=100);
+}
+
 /* Header */
 .levers-header {
 	display: flex;
