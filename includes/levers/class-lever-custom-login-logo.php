@@ -167,9 +167,6 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 		$url = $this->custom_url();
 		?>
 		<span class="levers-extra-sep" aria-hidden="true">&bull;</span>
-		<?php if ( '' !== $url ) : ?>
-			<img class="levers-favicon-preview" src="<?php echo esc_url( $url ); ?>" alt="" height="14" />
-		<?php endif; ?>
 		<a href="#" class="levers-favicon-link" data-levers-login-logo-pick><?php esc_html_e( 'Change logo', 'levers' ); ?></a>
 		<?php if ( '' !== $url ) : ?>
 			<a href="#" class="levers-favicon-link levers-favicon-link--remove" data-levers-login-logo-remove><?php esc_html_e( 'Remove', 'levers' ); ?></a>

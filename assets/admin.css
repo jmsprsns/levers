@@ -464,14 +464,6 @@
 	color: #c3c4c7;
 }
 
-.levers-favicon-preview {
-	display: inline-block;
-	vertical-align: -2px;
-	width: 14px;
-	height: 14px;
-	border-radius: 3px;
-}
-
 .levers-favicon-link {
 	font-size: 13px;
 	text-decoration: none;
