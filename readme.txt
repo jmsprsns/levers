@@ -72,6 +72,14 @@ Find it under Settings > Levers.
 * Disable smart punctuation - turns off WordPress's auto-curly-quotes / dash conversion, and straightens any curly quotes already in content.
 * Dynamic copyright year - auto-bumps stale © YYYY / Copyright YYYY in <footer> to the current year.
 * Stop nav menu jumps - rewrites placeholder href="#" in nav menus so dropdown parents don't scroll the page to the top.
+* Add missing image dimensions - sets width/height on <img> and <source> tags missing them, preventing layout shift and helping Core Web Vitals.
+* Add security headers - sends X-Frame-Options, X-Content-Type-Options, Referrer-Policy and a restrictive Permissions-Policy on every response.
+* Allow SVG uploads (sanitized) - lets admins upload SVGs, sanitizing each file to strip scripts, event handlers and external references.
+* Clean rel on internal links - strips SEO-blocking rel tokens (nofollow, sponsored, ugc, noindex...) from links pointing at your own domain.
+* Custom admin CSS - paste your own CSS to restyle the dashboard, menus or any wp-admin screen.
+* Custom frontend CSS - paste your own CSS into every front-end page, no theme editing required.
+* Remove double slashes from URLs - collapses // inside link and image paths, resolving the "Double slash in URL" warning SEO tools flag.
+* Search engine visibility warning - flags when "Discourage search engines" is on, with a one-click fix.
 
 == Installation ==
 
@@ -81,6 +89,4 @@ Find it under Settings > Levers.
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial release.
-* New lever: friendlier admin toolbar greeting.
+See https://github.com/jmsprsns/levers/releases for the full release history.
