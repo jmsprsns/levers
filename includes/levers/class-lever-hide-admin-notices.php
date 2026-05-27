@@ -84,7 +84,44 @@ class Levers_Lever_Hide_Admin_Notices extends Levers_Lever {
 
 		add_action( 'wp_ajax_levers_hide_notice', array( $this, 'ajax_hide_notice' ) );
 		add_action( 'wp_ajax_levers_reset_hidden_notices', array( $this, 'ajax_reset' ) );
+		add_action( 'admin_head', array( $this, 'print_preempt_css' ), 1 );
 		add_action( 'admin_footer', array( $this, 'print_hider_assets' ) );
+	}
+
+	/**
+	 * Pre-hide every admin notice via CSS in <head> until the footer JS
+	 * has fingerprinted it. Without this, previously-hidden notices flash
+	 * visible for ~half a second on page load (the JS only runs at
+	 * DOMContentLoaded, well after the browser has painted them).
+	 *
+	 * The JS sets data-levers-notice-handled="1" on every notice as it
+	 * processes it - that releases the CSS hold, and the JS has already
+	 * set inline display:none on the ones that should stay hidden, so
+	 * the user only ever sees the final state.
+	 *
+	 * Skipped entirely when nothing is hidden, otherwise every admin
+	 * page would briefly show no notices at all - a different (and on
+	 * fresh installs, gratuitous) flash.
+	 *
+	 * @return void
+	 */
+	public function print_preempt_css() {
+		if ( ! is_user_logged_in() ) {
+			return;
+		}
+
+		if ( empty( $this->get_hidden() ) ) {
+			return;
+		}
+		?>
+		<style id="levers-notice-preempt-css">
+		.notice:not([data-levers-notice-handled]),
+		.updated:not([data-levers-notice-handled]),
+		.error:not([data-levers-notice-handled]) {
+			display: none !important;
+		}
+		</style>
+		<?php
 	}
 
 	/* ---------------------------------------------------------------------
