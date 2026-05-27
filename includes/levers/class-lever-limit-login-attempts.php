@@ -128,27 +128,182 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 	/**
 	 * Resolve the visitor's IP address.
 	 *
-	 * Prefers Cloudflare's CF-Connecting-IP header when the site sits behind
-	 * Cloudflare, then a forwarded-for header, then the raw remote address.
+	 * Forwarded-IP headers (CF-Connecting-IP, X-Forwarded-For) are only
+	 * honored when REMOTE_ADDR is itself a known reverse proxy. Otherwise
+	 * an attacker reaching the origin directly could forge a fresh header
+	 * per request and rotate the rate-limit key every attempt, defeating
+	 * the lockout entirely.
 	 *
 	 * @return string
 	 */
 	private function get_ip() {
-		$candidate = '';
+		$remote = isset( $_SERVER['REMOTE_ADDR'] ) ? wp_unslash( $_SERVER['REMOTE_ADDR'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated below.
+		$remote = filter_var( $remote, FILTER_VALIDATE_IP );
+
+		if ( ! $remote ) {
+			return '0.0.0.0';
+		}
+
+		if ( ! $this->is_trusted_proxy( $remote ) ) {
+			return $remote;
+		}
 
 		if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
 			$candidate = wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated below.
-		} elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+			$valid     = filter_var( $candidate, FILTER_VALIDATE_IP );
+			if ( $valid ) {
+				return $valid;
+			}
+		}
+
+		if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
 			$forwarded = wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated below.
 			$parts     = explode( ',', $forwarded );
 			$candidate = trim( (string) reset( $parts ) );
-		} elseif ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
-			$candidate = wp_unslash( $_SERVER['REMOTE_ADDR'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated below.
+			$valid     = filter_var( $candidate, FILTER_VALIDATE_IP );
+			if ( $valid ) {
+				return $valid;
+			}
 		}
 
-		$valid = filter_var( $candidate, FILTER_VALIDATE_IP );
+		return $remote;
+	}
 
-		return $valid ? $valid : '0.0.0.0';
+	/**
+	 * Whether REMOTE_ADDR belongs to a reverse proxy whose forwarded-IP
+	 * headers can be trusted.
+	 *
+	 * @param string $ip Validated REMOTE_ADDR.
+	 * @return bool
+	 */
+	private function is_trusted_proxy( $ip ) {
+		foreach ( $this->trusted_proxy_ranges() as $range ) {
+			if ( $this->ip_in_range( $ip, $range ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * CIDR ranges that count as trusted reverse proxies.
+	 *
+	 * Defaults cover Cloudflare's published edge ranges plus loopback and
+	 * RFC1918 / IPv6 ULA private space, so common nginx-in-front-of-PHP
+	 * setups work out of the box. Site owners with other proxies (custom
+	 * load balancers, a second CDN) can extend the list via the
+	 * `levers_login_trusted_proxies` filter.
+	 *
+	 * @return string[]
+	 */
+	private function trusted_proxy_ranges() {
+		static $cached = null;
+
+		if ( null !== $cached ) {
+			return $cached;
+		}
+
+		$ranges = array_merge(
+			// Loopback.
+			array( '127.0.0.0/8', '::1/128' ),
+			// RFC1918 private + IPv6 unique-local.
+			array( '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', 'fc00::/7' ),
+			// Cloudflare IPv4 -- https://www.cloudflare.com/ips-v4/ (refreshed 2026-05-26).
+			array(
+				'173.245.48.0/20',
+				'103.21.244.0/22',
+				'103.22.200.0/22',
+				'103.31.4.0/22',
+				'141.101.64.0/18',
+				'108.162.192.0/18',
+				'190.93.240.0/20',
+				'188.114.96.0/20',
+				'197.234.240.0/22',
+				'198.41.128.0/17',
+				'162.158.0.0/15',
+				'104.16.0.0/13',
+				'104.24.0.0/14',
+				'172.64.0.0/13',
+				'131.0.72.0/22',
+			),
+			// Cloudflare IPv6 -- https://www.cloudflare.com/ips-v6/ (refreshed 2026-05-26).
+			array(
+				'2400:cb00::/32',
+				'2606:4700::/32',
+				'2803:f800::/32',
+				'2405:b500::/32',
+				'2405:8100::/32',
+				'2a06:98c0::/29',
+				'2c0f:f248::/32',
+			)
+		);
+
+		/**
+		 * Filter the list of trusted reverse-proxy CIDR ranges.
+		 *
+		 * Forwarded-IP headers (CF-Connecting-IP, X-Forwarded-For) are
+		 * only honored when REMOTE_ADDR falls inside one of these ranges.
+		 *
+		 * @param string[] $ranges Default ranges: loopback + RFC1918 + Cloudflare.
+		 */
+		$ranges = apply_filters( 'levers_login_trusted_proxies', $ranges );
+
+		$cached = is_array( $ranges ) ? array_values( array_filter( $ranges, 'is_string' ) ) : array();
+
+		return $cached;
+	}
+
+	/**
+	 * Whether $ip falls inside $range, where $range is a CIDR string
+	 * ("10.0.0.0/8", "2400:cb00::/32") or a bare IP. Works for both IPv4
+	 * and IPv6 via inet_pton.
+	 *
+	 * @param string $ip    A validated IP address.
+	 * @param string $range CIDR or bare IP.
+	 * @return bool
+	 */
+	private function ip_in_range( $ip, $range ) {
+		if ( false === strpos( $range, '/' ) ) {
+			$a = @inet_pton( $ip );    // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- false-return is the documented failure path.
+			$b = @inet_pton( $range ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			return false !== $a && false !== $b && $a === $b;
+		}
+
+		list( $subnet, $bits_raw ) = explode( '/', $range, 2 );
+		$bits = (int) $bits_raw;
+
+		$ip_packed     = @inet_pton( $ip );     // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$subnet_packed = @inet_pton( $subnet ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+
+		if ( false === $ip_packed || false === $subnet_packed ) {
+			return false;
+		}
+
+		// Cross-family comparison (IPv4 vs IPv6) is never a match.
+		if ( strlen( $ip_packed ) !== strlen( $subnet_packed ) ) {
+			return false;
+		}
+
+		$max_bits = strlen( $ip_packed ) * 8;
+		if ( $bits < 0 || $bits > $max_bits ) {
+			return false;
+		}
+
+		$full_bytes = intdiv( $bits, 8 );
+		$remainder  = $bits % 8;
+
+		if ( $full_bytes > 0 && substr( $ip_packed, 0, $full_bytes ) !== substr( $subnet_packed, 0, $full_bytes ) ) {
+			return false;
+		}
+
+		if ( 0 !== $remainder ) {
+			$mask = ( 0xFF << ( 8 - $remainder ) ) & 0xFF;
+			if ( ( ord( $ip_packed[ $full_bytes ] ) & $mask ) !== ( ord( $subnet_packed[ $full_bytes ] ) & $mask ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
