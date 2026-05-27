@@ -46,6 +46,8 @@ class Levers_Admin {
 			'plugin_action_links_' . plugin_basename( LEVERS_FILE ),
 			array( $this, 'add_settings_link' )
 		);
+
+		add_action( 'wp_ajax_levers_toggle', array( $this, 'ajax_toggle' ) );
 	}
 
 	/**
@@ -176,6 +178,31 @@ class Levers_Admin {
 			'2.1.4',
 			true
 		);
+
+		wp_enqueue_script(
+			'levers-admin',
+			LEVERS_URL . 'assets/admin.js',
+			array( 'levers-toastr' ),
+			LEVERS_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'levers-admin',
+			'leversAdmin',
+			array(
+				'ajaxurl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'levers_toggle' ),
+				'strings' => array(
+					/* translators: %s: lever title. */
+					'enabled'  => __( '%s enabled.', 'levers' ),
+					/* translators: %s: lever title. */
+					'disabled' => __( '%s disabled.', 'levers' ),
+					/* translators: %s: lever title. */
+					'failed'   => __( 'Could not save %s. Please try again.', 'levers' ),
+				),
+			)
+		);
 	}
 
 	/**
@@ -238,13 +265,69 @@ class Levers_Admin {
 			}
 		}
 
-		// Flag the save with a one-time, per-user transient. It is consumed
-		// (deleted) the next time the page loads, so the "saved" toast fires
-		// exactly once and never replays on a plain refresh.
-		set_transient( 'levers_saved_' . get_current_user_id(), 1, MINUTE_IN_SECONDS );
-
 		wp_safe_redirect( admin_url( 'options-general.php?page=levers' ) );
 		exit;
+	}
+
+	/**
+	 * AJAX: flip a single lever and fire its on_enable/on_disable hook.
+	 *
+	 * Mirrors handle_save()'s per-lever logic so behavior stays identical
+	 * whether the change arrives via the (now JS-driven) toggle or via a
+	 * form POST to handle_save().
+	 *
+	 * @return void
+	 */
+	public function ajax_toggle() {
+		check_ajax_referer( 'levers_toggle', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'levers' ) ) );
+		}
+
+		$lever_id  = isset( $_POST['lever_id'] ) ? sanitize_key( wp_unslash( $_POST['lever_id'] ) ) : '';
+		$requested = ! empty( $_POST['enabled'] ) && '0' !== (string) $_POST['enabled'];
+
+		$levers = $this->plugin->get_levers();
+
+		if ( '' === $lever_id || ! isset( $levers[ $lever_id ] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unknown lever.', 'levers' ) ) );
+		}
+
+		$lever = $levers[ $lever_id ];
+
+		// Defense in depth: an unavailable lever can never be enabled, even
+		// if the checkbox is somehow re-enabled client-side.
+		if ( $requested && ! $lever->is_available() ) {
+			wp_send_json_error( array( 'message' => __( 'This lever is unavailable on this site.', 'levers' ) ) );
+		}
+
+		// Mirror handle_save()'s first-save semantics: when no option exists
+		// yet, treat the previous state as "off" so on_enable fires for the
+		// first lever the user explicitly turns on.
+		$first_save  = ( false === get_option( Levers_Plugin::OPTION, false ) );
+		$was_enabled = $first_save ? false : $this->plugin->is_enabled( $lever_id );
+		$now_enabled = $requested;
+
+		$settings                = $first_save ? array() : (array) get_option( Levers_Plugin::OPTION, array() );
+		$settings[ $lever_id ]   = $now_enabled ? 1 : 0;
+
+		update_option( Levers_Plugin::OPTION, $settings );
+
+		if ( $now_enabled !== $was_enabled ) {
+			if ( $now_enabled ) {
+				$lever->on_enable();
+			} else {
+				$lever->on_disable();
+			}
+		}
+
+		wp_send_json_success(
+			array(
+				'enabled' => $now_enabled,
+				'title'   => $lever->title(),
+			)
+		);
 	}
 
 	/**
@@ -258,15 +341,6 @@ class Levers_Admin {
 
 		foreach ( $this->plugin->get_levers() as $id => $lever ) {
 			$grouped[ $lever->category() ][ $id ] = $lever;
-		}
-
-		// One-time "saved" toast. The flag is read and deleted in the same
-		// request, so a plain refresh has nothing left to trigger - there is
-		// no URL parameter and no separate state to fall out of sync.
-		$flag       = 'levers_saved_' . get_current_user_id();
-		$just_saved = (bool) get_transient( $flag );
-		if ( $just_saved ) {
-			delete_transient( $flag );
 		}
 
 		// Categories that actually have a lever - used for both the visible
@@ -317,6 +391,8 @@ class Levers_Admin {
 												id="<?php echo esc_attr( $field_id ); ?>"
 												name="levers[<?php echo esc_attr( $id ); ?>]"
 												value="1"
+												data-lever-id="<?php echo esc_attr( $id ); ?>"
+												data-lever-title="<?php echo esc_attr( $lever->title() ); ?>"
 												<?php checked( $enabled ); ?>
 												<?php disabled( ! $available ); ?>
 											/>
@@ -331,7 +407,6 @@ class Levers_Admin {
 					<?php endforeach; ?>
 				</div>
 
-				<?php submit_button( __( 'Save Changes', 'levers' ) ); ?>
 			</form>
 			</div><!-- /.levers-main -->
 
@@ -374,27 +449,5 @@ class Levers_Admin {
 			</div><!-- /.levers-layout -->
 		</div>
 		<?php
-		if ( $just_saved ) :
-			?>
-			<script>
-			( function () {
-				function fire() {
-					if ( window.jQuery && window.toastr ) {
-						window.toastr.options = {
-							closeButton: true,
-							progressBar: true,
-							positionClass: 'toast-top-right',
-							timeOut: 4000
-						};
-						window.toastr.success( <?php echo wp_json_encode( __( 'Your levers have been saved.', 'levers' ) ); ?> );
-					} else {
-						window.setTimeout( fire, 60 );
-					}
-				}
-				fire();
-			}() );
-			</script>
-			<?php
-		endif;
 	}
 }
