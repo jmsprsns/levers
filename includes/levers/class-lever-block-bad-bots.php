@@ -37,6 +37,18 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 	/** Flag set once WP Rocket's advanced-cache.php has been regenerated with our UAs. */
 	const ROCKET_MARK = 'levers_block_bad_bots_rocket_integrated';
 
+	/** Flag set once W3 Total Cache's pgcache.reject.ua has been merged with our UAs. */
+	const W3TC_MARK = 'levers_block_bad_bots_w3tc_integrated';
+
+	/** Flag set once WP Super Cache's cache_rejected_user_agent has been merged with our UAs. */
+	const WPSC_MARK = 'levers_block_bad_bots_wpsc_integrated';
+
+	/** Flag set once the LiteSpeed Cache .htaccess no-cache block has been written. */
+	const LITESPEED_MARK = 'levers_block_bad_bots_litespeed_integrated';
+
+	/** insert_with_markers() marker for the LiteSpeed bypass block in the site .htaccess. */
+	const HTACCESS_MARKER = 'Levers Bad Bots Nocache';
+
 	/**
 	 * Always-on AJAX wiring (regardless of lever state) - the editor needs
 	 * to be reachable so users can prep their list before flipping the
@@ -196,17 +208,23 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function run() {
-		// WP Rocket integration: tell its page cache to bypass these UAs so the
-		// request reaches PHP and this lever can fire. Without this, cached
-		// pages are served from disk by nginx before WordPress boots, and the
-		// lever never runs - exactly the failure mode that surfaced on prod.
+		// Cache-plugin integrations: each page cache short-circuits the request
+		// before plugins_loaded fires, so for a bad-bot request to actually hit
+		// this lever, the cache layer must be told to bypass cache for our UAs.
+		// Each integration is a no-op when its target plugin isn't installed.
 		$this->ensure_rocket_filter();
 
-		// First request after enabling (or after WP Rocket is installed later):
-		// regenerate WP Rocket's compiled cache config so our UAs take effect
-		// immediately instead of waiting for the next WP Rocket settings save.
 		if ( ! get_option( self::ROCKET_MARK ) ) {
 			$this->rebuild_rocket();
+		}
+		if ( ! get_option( self::W3TC_MARK ) ) {
+			$this->integrate_w3tc();
+		}
+		if ( ! get_option( self::WPSC_MARK ) ) {
+			$this->integrate_wpsc();
+		}
+		if ( ! get_option( self::LITESPEED_MARK ) ) {
+			$this->integrate_litespeed();
 		}
 
 		if ( empty( $_SERVER['HTTP_USER_AGENT'] ) ) {
@@ -224,28 +242,47 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 
 	/**
 	 * Called once when the lever is toggled on. Force a fresh integration with
-	 * WP Rocket so its cache config knows about our UAs without waiting for
-	 * the next page load.
+	 * each supported cache plugin so its cache config knows about our UAs
+	 * without waiting for the next page load.
 	 */
 	public function on_enable() {
-		delete_option( self::ROCKET_MARK );
+		$this->reset_cache_marks();
 		$this->ensure_rocket_filter();
 		$this->rebuild_rocket();
+		$this->integrate_w3tc();
+		$this->integrate_wpsc();
+		$this->integrate_litespeed();
 	}
 
 	/**
-	 * Called once when the lever is toggled off. Rebuild WP Rocket's cache
-	 * config WITHOUT our filter registered so our UAs are dropped from its
-	 * reject list and normal caching resumes for them.
+	 * Called once when the lever is toggled off. Strip our UAs from each
+	 * cache plugin's reject list so normal caching resumes for them.
 	 */
 	public function on_disable() {
-		delete_option( self::ROCKET_MARK );
+		$this->reset_cache_marks();
+		// WP Rocket: rebuild without our filter so our UAs drop out.
 		if ( function_exists( 'rocket_generate_advanced_cache_file' ) ) {
 			rocket_generate_advanced_cache_file();
 		}
 		if ( function_exists( 'rocket_generate_config_file' ) ) {
 			rocket_generate_config_file();
 		}
+		$this->disintegrate_w3tc();
+		$this->disintegrate_wpsc();
+		$this->disintegrate_litespeed();
+	}
+
+	/**
+	 * Clear every cache-integration marker so the next on_enable / run() pass
+	 * re-injects from scratch.
+	 *
+	 * @return void
+	 */
+	private function reset_cache_marks() {
+		delete_option( self::ROCKET_MARK );
+		delete_option( self::W3TC_MARK );
+		delete_option( self::WPSC_MARK );
+		delete_option( self::LITESPEED_MARK );
 	}
 
 	/**
@@ -298,6 +335,247 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 			$patterns
 		);
 		return array_merge( (array) $ua_list, $escaped );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * W3 Total Cache integration
+	 *
+	 * Verified: list lives in pgcache.reject.ua, matched with stristr(),
+	 * i.e. case-insensitive substring - feed literals, no escaping.
+	 * ------------------------------------------------------------------- */
+
+	/**
+	 * Merge our patterns into W3TC's pgcache.reject.ua and trigger a
+	 * (best-effort) .htaccess regen for Disk: Enhanced mode.
+	 *
+	 * @return void
+	 */
+	private function integrate_w3tc() {
+		if ( ! $this->w3tc_active() ) {
+			return;
+		}
+		try {
+			$config   = \W3TC\Dispatcher::config();
+			$existing = (array) $config->get_array( 'pgcache.reject.ua' );
+			$ours     = $this->patterns_for_substring();
+			$merged   = array_values( array_unique( array_merge( $existing, $ours ) ) );
+			$config->set( 'pgcache.reject.ua', $merged );
+			$config->save();
+			$this->w3tc_regenerate_htaccess();
+			update_option( self::W3TC_MARK, 1, false );
+		} catch ( \Throwable $e ) {
+			// W3TC API surface changes across versions; never break the request
+			// if a method moved or threw. Marker stays unset so we'll retry.
+		}
+	}
+
+	/**
+	 * Subtract only the patterns we added; leave any pre-existing entries
+	 * the site owner had alone.
+	 *
+	 * @return void
+	 */
+	private function disintegrate_w3tc() {
+		if ( ! $this->w3tc_active() ) {
+			return;
+		}
+		try {
+			$config   = \W3TC\Dispatcher::config();
+			$existing = (array) $config->get_array( 'pgcache.reject.ua' );
+			$ours     = array_keys( $this->bots() );
+			$cleaned  = array_values( array_diff( $existing, $ours ) );
+			$config->set( 'pgcache.reject.ua', $cleaned );
+			$config->save();
+			$this->w3tc_regenerate_htaccess();
+		} catch ( \Throwable $e ) {
+		}
+	}
+
+	/**
+	 * Best-effort .htaccess regen for W3TC's Disk: Enhanced mode. Method
+	 * names on PgCache_Environment vary across versions, so probe before
+	 * calling; if nothing matches, the user will need to save W3TC settings
+	 * once to trigger their own .htaccess rebuild.
+	 *
+	 * @return void
+	 */
+	private function w3tc_regenerate_htaccess() {
+		if ( ! class_exists( '\W3TC\Dispatcher' ) || ! method_exists( '\W3TC\Dispatcher', 'component' ) ) {
+			return;
+		}
+		try {
+			$env    = \W3TC\Dispatcher::component( 'PgCache_Environment' );
+			$config = \W3TC\Dispatcher::config();
+			if ( ! is_object( $env ) ) {
+				return;
+			}
+			if ( method_exists( $env, 'fix_in_wpadmin' ) ) {
+				$env->fix_in_wpadmin( $config );
+			} elseif ( method_exists( $env, 'fix_on_event' ) ) {
+				$env->fix_on_event( $config, 'config_change' );
+			}
+		} catch ( \Throwable $e ) {
+		}
+	}
+
+	private function w3tc_active() {
+		return defined( 'W3TC' ) || class_exists( '\W3TC\Dispatcher' );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * WP Super Cache integration
+	 *
+	 * Verified: $cache_rejected_user_agent in wp-cache-config.php, edited
+	 * via WPSC's own wp_cache_replace_line() helper. Substring match.
+	 * ------------------------------------------------------------------- */
+
+	/**
+	 * Merge our patterns into WPSC's cache_rejected_user_agent.
+	 *
+	 * @return void
+	 */
+	private function integrate_wpsc() {
+		global $wp_cache_config_file, $cache_rejected_user_agent;
+		if ( ! function_exists( 'wp_cache_replace_line' ) || empty( $wp_cache_config_file ) ) {
+			return;
+		}
+		$existing = is_array( $cache_rejected_user_agent ) ? $cache_rejected_user_agent : array();
+		$ours     = $this->patterns_for_substring();
+		$merged   = array_values( array_unique( array_merge( $existing, $ours ) ) );
+		$this->wpsc_write_ua_list( $merged );
+		update_option( self::WPSC_MARK, 1, false );
+	}
+
+	/**
+	 * Subtract only the patterns we added.
+	 *
+	 * @return void
+	 */
+	private function disintegrate_wpsc() {
+		global $wp_cache_config_file, $cache_rejected_user_agent;
+		if ( ! function_exists( 'wp_cache_replace_line' ) || empty( $wp_cache_config_file ) ) {
+			return;
+		}
+		$existing = is_array( $cache_rejected_user_agent ) ? $cache_rejected_user_agent : array();
+		$ours     = array_keys( $this->bots() );
+		$cleaned  = array_values( array_diff( $existing, $ours ) );
+		$this->wpsc_write_ua_list( $cleaned );
+	}
+
+	private function wpsc_write_ua_list( array $list ) {
+		global $wp_cache_config_file;
+		$text = var_export( $list, true );
+		wp_cache_replace_line(
+			'^ *\$cache_rejected_user_agent',
+			"\$cache_rejected_user_agent = $text;",
+			$wp_cache_config_file
+		);
+	}
+
+	/* ---------------------------------------------------------------------
+	 * LiteSpeed Cache integration
+	 *
+	 * LiteSpeed serves from the web server before PHP, so a PHP filter is
+	 * useless. We own a marked block in the site .htaccess that emits a
+	 * Cache-Control:no-cache for matching UAs - server-honored, version-
+	 * independent. <IfModule LiteSpeed> means the rule is a harmless no-op
+	 * on Apache/nginx without LiteSpeed.
+	 * ------------------------------------------------------------------- */
+
+	private function integrate_litespeed() {
+		if ( ! $this->litespeed_active() ) {
+			return;
+		}
+		$ua_regex = $this->patterns_for_litespeed_regex();
+		if ( '' === $ua_regex ) {
+			return;
+		}
+		$insertion = array(
+			'<IfModule LiteSpeed>',
+			'RewriteEngine On',
+			'RewriteCond %{HTTP_USER_AGENT} (' . $ua_regex . ') [NC]',
+			'RewriteRule .* - [E=Cache-Control:no-cache]',
+			'</IfModule>',
+		);
+		if ( $this->htaccess_insert( self::HTACCESS_MARKER, $insertion ) ) {
+			update_option( self::LITESPEED_MARK, 1, false );
+		}
+	}
+
+	private function disintegrate_litespeed() {
+		// Always attempt removal - even if LiteSpeed isn't currently active,
+		// the marker block may have been written previously.
+		$this->htaccess_insert( self::HTACCESS_MARKER, array() );
+	}
+
+	private function litespeed_active() {
+		return defined( 'LSCWP_V' ) || class_exists( 'LiteSpeed\Core' );
+	}
+
+	/**
+	 * LiteSpeed needs a regex-safe pipe-joined string, with spaces escaped
+	 * for mod_rewrite. The '008' alt-UA for 80legs is dropped if ever
+	 * present - as a bare alternation token it would false-match version
+	 * numbers like "Firefox/110.0.0.8" or "Chrome/008-build" inside
+	 * legitimate UAs.
+	 *
+	 * @return string Pipe-joined regex, or '' if nothing to inject.
+	 */
+	private function patterns_for_litespeed_regex() {
+		$patterns = array_values( array_diff( $this->patterns(), array( '008' ) ) );
+		if ( empty( $patterns ) ) {
+			return '';
+		}
+		$escaped = array_map(
+			static function ( $p ) {
+				$p = preg_quote( $p, '/' );
+				return str_replace( ' ', '\\ ', $p );
+			},
+			$patterns
+		);
+		return implode( '|', $escaped );
+	}
+
+	/**
+	 * Substring-match targets (W3TC, WPSC). Returns raw literals - no escaping.
+	 * '008' (80legs alt) is dropped because as a bare substring it false-
+	 * matches version numbers inside legitimate UAs.
+	 *
+	 * @return string[]
+	 */
+	private function patterns_for_substring() {
+		return array_values( array_diff( $this->patterns(), array( '008' ) ) );
+	}
+
+	/**
+	 * Write or remove a marked block in the site .htaccess via WordPress's
+	 * insert_with_markers(). Passing an empty insertion removes the block.
+	 *
+	 * @param string   $marker    Label between BEGIN/END markers.
+	 * @param string[] $insertion Lines to insert; empty array removes the block.
+	 * @return bool True on success.
+	 */
+	private function htaccess_insert( $marker, array $insertion ) {
+		if ( ! function_exists( 'insert_with_markers' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/misc.php';
+		}
+		if ( ! function_exists( 'get_home_path' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		if ( ! function_exists( 'insert_with_markers' ) || ! function_exists( 'get_home_path' ) ) {
+			return false;
+		}
+		$htaccess = get_home_path() . '.htaccess';
+		// insert_with_markers will create the file if missing, but a clean
+		// remove on a non-existent file is also a no-op. Either way, only
+		// proceed if the directory is writable.
+		if ( file_exists( $htaccess ) && ! is_writable( $htaccess ) ) {
+			return false;
+		}
+		if ( ! file_exists( $htaccess ) && ! is_writable( dirname( $htaccess ) ) ) {
+			return false;
+		}
+		return (bool) insert_with_markers( $htaccess, $marker, $insertion );
 	}
 
 	/**
@@ -549,6 +827,15 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 		}
 
 		update_option( self::OPTION, $disabled, false );
+
+		// Refresh every cache plugin's reject list so modal toggles take effect
+		// for cache-bypass logic immediately (not just for the in-PHP block).
+		$this->reset_cache_marks();
+		$this->ensure_rocket_filter();
+		$this->rebuild_rocket();
+		$this->integrate_w3tc();
+		$this->integrate_wpsc();
+		$this->integrate_litespeed();
 
 		wp_send_json_success();
 	}
