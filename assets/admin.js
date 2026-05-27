@@ -55,9 +55,13 @@
 			var nowOn    = checkbox.checked;
 			var wasOn    = ! nowOn; // The change just happened; previous was the opposite.
 
-			// A new toggle is starting -- cancel any pending reload from a
-			// prior toggle so we don't interrupt this request mid-flight.
-			cancelPendingReload();
+			// Reload-worthy toggles supersede any pending reload from a
+			// prior reload-worthy toggle. Non-reload-worthy toggles leave
+			// the pending reload alone so it still fires for the earlier
+			// extras-changing flip.
+			if ( checkbox.hasAttribute( 'data-reload-on-toggle' ) ) {
+				cancelPendingReload();
+			}
 
 			checkbox.disabled = true;
 
@@ -80,7 +84,13 @@
 						var responseTitle = ( res.data && res.data.title ) ? res.data.title : title;
 						var template      = nowOn ? cfg.strings.enabled : cfg.strings.disabled;
 						toast( 'success', format( template, responseTitle ) );
-						schedulePendingReload();
+
+						// Only reload when this lever's extras change with state
+						// (ban-log link, favicon picker, "Edit CSS" link, etc.).
+						// Other toggles leave the page untouched.
+						if ( checkbox.hasAttribute( 'data-reload-on-toggle' ) ) {
+							schedulePendingReload();
+						}
 					} else {
 						checkbox.checked = wasOn;
 						var msg = ( res && res.data && res.data.message ) || format( cfg.strings.failed, title );

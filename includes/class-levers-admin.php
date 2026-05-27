@@ -369,6 +369,9 @@ class Levers_Admin {
 									$available = $lever->is_available();
 									$enabled   = $available && $this->plugin->is_enabled( $id );
 									$row_class = 'levers-item' . ( $available ? '' : ' levers-item--unavailable' );
+									// A lever's extra is reload-worthy iff the lever overrides
+									// render_extra(). Saves marking every lever individually.
+									$has_extra = 'Levers_Lever' !== ( new ReflectionMethod( $lever, 'render_extra' ) )->getDeclaringClass()->getName();
 									?>
 									<div class="<?php echo esc_attr( $row_class ); ?>">
 										<span class="levers-item__icon"><?php echo Levers_Icons::get( $lever->icon(), 22 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- trusted inline SVG. ?></span>
@@ -393,6 +396,7 @@ class Levers_Admin {
 												value="1"
 												data-lever-id="<?php echo esc_attr( $id ); ?>"
 												data-lever-title="<?php echo esc_attr( $lever->title() ); ?>"
+												<?php if ( $has_extra ) : ?>data-reload-on-toggle="1"<?php endif; ?>
 												<?php checked( $enabled ); ?>
 												<?php disabled( ! $available ); ?>
 											/>

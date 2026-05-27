@@ -16,9 +16,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * The lever toggle is the master on/off: when off, nothing is echoed
  * regardless of what's saved, so you can flip it off temporarily without
- * losing the code. The "Edit code" link opens the modal whether the
- * toggle is on or off, so users can paste code first and flip the lever
- * on afterwards.
+ * losing the code. The "Edit code" link is only shown while the lever is
+ * on, matching the other extras-bearing levers on the settings screen.
  *
  * Output is intentionally NOT escaped - the whole point is to drop raw
  * <script> tags into the page. The one security line: saving requires
@@ -179,7 +178,9 @@ class Levers_Lever_Header_Footer_Scripts extends Levers_Lever {
 	 * @return void
 	 */
 	public function render_extra( $enabled = false ) {
-		unset( $enabled ); // Intentionally ignored.
+		if ( ! $enabled ) {
+			return;
+		}
 
 		$scripts = $this->get_scripts();
 		$can_save = current_user_can( 'unfiltered_html' );

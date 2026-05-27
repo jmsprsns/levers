@@ -13,9 +13,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * The lever toggle is the master on/off: when off, nothing is echoed
  * regardless of what's saved, so you can flip it off temporarily without
- * losing the code. The "Edit CSS" link opens the modal whether the
- * toggle is on or off, so users can paste CSS first and flip the lever
- * on afterwards.
+ * losing the code. The "Edit CSS" link is only shown while the lever is
+ * on, matching the other extras-bearing levers on the settings screen.
  *
  * Saving is gated by the `unfiltered_html` capability (admins-only by
  * default) since CSS can @import remote stylesheets and reference
@@ -138,7 +137,9 @@ class Levers_Lever_Custom_Frontend_Css extends Levers_Lever {
 	 * @return void
 	 */
 	public function render_extra( $enabled = false ) {
-		unset( $enabled ); // Intentionally ignored.
+		if ( ! $enabled ) {
+			return;
+		}
 
 		$css      = $this->get_css();
 		$can_save = current_user_can( 'unfiltered_html' );
