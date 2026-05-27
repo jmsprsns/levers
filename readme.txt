@@ -16,7 +16,7 @@ Tweak WordPress with recommended settings to improve usability, security, perfor
 
 Levers gives you a single screen of recommended WordPress tweaks. Each tweak is a "lever" you flip on or off, grouped by what it improves: usability, security, performance, spam and bug fixes.
 
-Nothing changes until you opt in - every lever ships switched off.
+Only keep the tweaks and functionality that you need.
 
 Find it under Settings > Levers.
 
