@@ -476,7 +476,12 @@
 	text-decoration: none;
 }
 
-.levers-favicon-link--remove {
+a.levers-favicon-link--remove,
+a.levers-favicon-link--remove:link,
+a.levers-favicon-link--remove:visited,
+a.levers-favicon-link--remove:hover,
+a.levers-favicon-link--remove:focus,
+a.levers-favicon-link--remove:active {
 	color: #b32d2e;
 }
 
