@@ -168,11 +168,11 @@ class Levers_Lever_Favicon extends Levers_Lever {
 			return;
 		}
 
-		$url = $this->custom_url();
+		$has_custom = (int) get_option( self::OPTION, 0 ) > 0;
 		?>
 		<span class="levers-extra-sep" aria-hidden="true">&bull;</span>
 		<a href="#" class="levers-favicon-link" data-levers-favicon-pick><?php esc_html_e( 'Change favicon', 'levers' ); ?></a>
-		<?php if ( '' !== $url ) : ?>
+		<?php if ( $has_custom ) : ?>
 			<a href="#" class="levers-favicon-link levers-favicon-link--remove" data-levers-favicon-remove><?php esc_html_e( 'Remove', 'levers' ); ?></a>
 		<?php endif; ?>
 		<?php
