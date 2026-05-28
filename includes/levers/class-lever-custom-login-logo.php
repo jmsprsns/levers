@@ -229,8 +229,16 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 					} );
 
 					frame.on( 'select', function () {
-						var attachment = frame.state().get( 'selection' ).first().toJSON();
-						postAjax( 'levers_set_login_logo', { attachment_id: String( attachment.id ) }, cfg.picked );
+						var selection = frame.state().get( 'selection' );
+						var first     = selection && selection.first();
+						var id        = first && first.get ? first.get( 'id' ) : null;
+
+						if ( ! id ) {
+							toast( 'error', 'Could not read the chosen image.' );
+							return;
+						}
+
+						postAjax( 'levers_set_login_logo', { attachment_id: String( id ) }, cfg.picked );
 					} );
 				}
 
@@ -271,6 +279,9 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 						} else {
 							toast( 'error', ( res && res.data && res.data.message ) || 'Something went wrong.' );
 						}
+					} )
+					.catch( function ( err ) {
+						toast( 'error', 'Save failed: ' + ( err && err.message ? err.message : 'network error' ) );
 					} );
 			}
 

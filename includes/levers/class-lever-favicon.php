@@ -234,8 +234,16 @@ class Levers_Lever_Favicon extends Levers_Lever {
 					} );
 
 					frame.on( 'select', function () {
-						var attachment = frame.state().get( 'selection' ).first().toJSON();
-						saveFavicon( attachment.id );
+						var selection = frame.state().get( 'selection' );
+						var first     = selection && selection.first();
+						var id        = first && first.get ? first.get( 'id' ) : null;
+
+						if ( ! id ) {
+							toast( 'error', 'Could not read the chosen image.' );
+							return;
+						}
+
+						saveFavicon( id );
 					} );
 				}
 
@@ -280,6 +288,9 @@ class Levers_Lever_Favicon extends Levers_Lever {
 						} else {
 							toast( 'error', ( res && res.data && res.data.message ) || 'Something went wrong.' );
 						}
+					} )
+					.catch( function ( err ) {
+						toast( 'error', 'Save failed: ' + ( err && err.message ? err.message : 'network error' ) );
 					} );
 			}
 
