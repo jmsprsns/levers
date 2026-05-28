@@ -336,15 +336,15 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 			wp_send_json_error( array( 'message' => __( 'Please choose an image.', 'levers' ) ) );
 		}
 
-		$updated = update_option( self::OPTION, $id, false );
-		wp_cache_delete( self::OPTION, 'options' );
-		$read_back = (int) get_option( self::OPTION, 0 );
+		$result = $this->force_save_option( $id );
 
 		wp_send_json_success(
 			array(
 				'id'        => $id,
-				'updated'   => (bool) $updated,
-				'read_back' => $read_back,
+				'updated'   => 'failed' !== $result['strategy'],
+				'read_back' => $result['read_back'],
+				'strategy'  => $result['strategy'],
+				'db_value'  => $result['db_value'],
 			)
 		);
 	}
@@ -361,7 +361,86 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 			wp_send_json_error();
 		}
 
-		delete_option( self::OPTION );
+		$this->force_delete_option();
 		wp_send_json_success();
+	}
+
+	/**
+	 * Persist the login-logo attachment id against hosts where
+	 * update_option is short-circuited (pre_update_option_* filters,
+	 * staging-mode option locks, busted object-cache drop-ins, etc.).
+	 *
+	 * @param int $id Attachment id.
+	 * @return array{strategy:string,read_back:int,db_value:int}
+	 */
+	private function force_save_option( $id ) {
+		global $wpdb;
+
+		$bust = function () {
+			wp_cache_delete( self::OPTION, 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		};
+
+		update_option( self::OPTION, $id, false );
+		$bust();
+		if ( (int) get_option( self::OPTION, 0 ) === $id ) {
+			return array( 'strategy' => 'update_option', 'read_back' => $id, 'db_value' => $id );
+		}
+
+		delete_option( self::OPTION );
+		$bust();
+		add_option( self::OPTION, $id, '', false );
+		$bust();
+		if ( (int) get_option( self::OPTION, 0 ) === $id ) {
+			return array( 'strategy' => 'delete_add', 'read_back' => $id, 'db_value' => $id );
+		}
+
+		$wpdb->replace(
+			$wpdb->options,
+			array(
+				'option_name'  => self::OPTION,
+				'option_value' => (string) $id,
+				'autoload'     => 'no',
+			),
+			array( '%s', '%s', '%s' )
+		);
+		$bust();
+
+		$db_value  = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+				self::OPTION
+			)
+		);
+		$read_back = (int) get_option( self::OPTION, 0 );
+
+		return array(
+			'strategy'  => $read_back === $id ? 'direct_db' : 'failed',
+			'read_back' => $read_back,
+			'db_value'  => $db_value,
+		);
+	}
+
+	/**
+	 * Clear the login-logo option, falling back to a direct $wpdb
+	 * DELETE if standard delete_option leaves the row behind.
+	 *
+	 * @return void
+	 */
+	private function force_delete_option() {
+		global $wpdb;
+
+		delete_option( self::OPTION );
+		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+
+		if ( (int) get_option( self::OPTION, 0 ) > 0 ) {
+			$wpdb->delete( $wpdb->options, array( 'option_name' => self::OPTION ), array( '%s' ) );
+			wp_cache_delete( self::OPTION, 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
 	}
 }
