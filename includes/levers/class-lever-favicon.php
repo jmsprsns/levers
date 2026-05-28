@@ -282,12 +282,32 @@ class Levers_Lever_Favicon extends Levers_Lever {
 				fetch( cfg.ajaxurl, { method: 'POST', credentials: 'same-origin', body: body } )
 					.then( function ( r ) { return r.json(); } )
 					.then( function ( res ) {
-						if ( res && res.success ) {
-							toast( 'success', successMessage );
-							window.setTimeout( function () { window.location.reload(); }, 1000 );
-						} else {
-							toast( 'error', ( res && res.data && res.data.message ) || 'Something went wrong.' );
+						if ( window.console && window.console.log ) {
+							window.console.log( '[Levers favicon] AJAX response:', res );
 						}
+						if ( ! res || ! res.success ) {
+							toast( 'error', ( res && res.data && res.data.message ) || 'Something went wrong.' );
+							return;
+						}
+
+						var data = res.data || {};
+						// 'data.id' is set for save, absent for remove. Verify the
+						// post-write read-back matches what we just told the server.
+						if ( 'undefined' !== typeof data.id && data.read_back !== data.id ) {
+							window.toastr.options.timeOut       = 0;
+							window.toastr.options.extendedTimeOut = 0;
+							toast(
+								'error',
+								'Save did not persist. Sent id=' + data.id +
+								', updated=' + data.updated +
+								', read_back=' + data.read_back +
+								'. Likely a pre_update_option_* filter or busted object cache on this host.'
+							);
+							return;
+						}
+
+						toast( 'success', successMessage );
+						window.setTimeout( function () { window.location.reload(); }, 1000 );
 					} )
 					.catch( function ( err ) {
 						toast( 'error', 'Save failed: ' + ( err && err.message ? err.message : 'network error' ) );
@@ -327,8 +347,21 @@ class Levers_Lever_Favicon extends Levers_Lever {
 			wp_send_json_error( array( 'message' => __( 'Please choose an image.', 'levers' ) ) );
 		}
 
-		update_option( self::OPTION, $id, false );
-		wp_send_json_success( array( 'id' => $id ) );
+		$updated = update_option( self::OPTION, $id, false );
+
+		// Bust any object-cache copy so a stale 0 can't survive the write
+		// (some drop-ins don't invalidate cleanly on update_option).
+		wp_cache_delete( self::OPTION, 'options' );
+
+		$read_back = (int) get_option( self::OPTION, 0 );
+
+		wp_send_json_success(
+			array(
+				'id'        => $id,
+				'updated'   => (bool) $updated,
+				'read_back' => $read_back,
+			)
+		);
 	}
 
 	/**
