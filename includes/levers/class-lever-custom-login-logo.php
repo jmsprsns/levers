@@ -206,6 +206,8 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 			'title'   => __( 'Choose a login screen logo', 'levers' ),
 			'button'  => __( 'Use this logo', 'levers' ),
 			'confirm' => __( 'Remove the custom login logo?', 'levers' ),
+			'picked'  => __( 'Login logo updated.', 'levers' ),
+			'removed' => __( 'Login logo removed.', 'levers' ),
 		);
 		?>
 		<script>
@@ -228,7 +230,7 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 
 					frame.on( 'select', function () {
 						var attachment = frame.state().get( 'selection' ).first().toJSON();
-						postAjax( 'levers_set_login_logo', { attachment_id: String( attachment.id ) } );
+						postAjax( 'levers_set_login_logo', { attachment_id: String( attachment.id ) }, cfg.picked );
 					} );
 				}
 
@@ -238,10 +240,21 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 			function removeLogo( e ) {
 				e.preventDefault();
 				if ( ! window.confirm( cfg.confirm ) ) { return; }
-				postAjax( 'levers_remove_login_logo', {} );
+				postAjax( 'levers_remove_login_logo', {}, cfg.removed );
 			}
 
-			function postAjax( action, extra ) {
+			function toast( type, message ) {
+				if ( ! window.toastr ) { return; }
+				window.toastr.options = {
+					closeButton:   true,
+					progressBar:   true,
+					positionClass: 'toast-top-right',
+					timeOut:       4000
+				};
+				window.toastr[ type ]( message );
+			}
+
+			function postAjax( action, extra, successMessage ) {
 				var body = new URLSearchParams();
 				body.append( 'action', action );
 				body.append( 'nonce', cfg.nonce );
@@ -253,9 +266,10 @@ class Levers_Lever_Custom_Login_Logo extends Levers_Lever {
 					.then( function ( r ) { return r.json(); } )
 					.then( function ( res ) {
 						if ( res && res.success ) {
-							window.location.reload();
-						} else if ( window.toastr ) {
-							window.toastr.error( ( res && res.data && res.data.message ) || 'Something went wrong.' );
+							toast( 'success', successMessage );
+							window.setTimeout( function () { window.location.reload(); }, 1000 );
+						} else {
+							toast( 'error', ( res && res.data && res.data.message ) || 'Something went wrong.' );
 						}
 					} );
 			}

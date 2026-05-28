@@ -211,6 +211,8 @@ class Levers_Lever_Favicon extends Levers_Lever {
 			'title'   => __( 'Choose a favicon', 'levers' ),
 			'button'  => __( 'Use this favicon', 'levers' ),
 			'confirm' => __( 'Remove the current favicon?', 'levers' ),
+			'picked'  => __( 'Favicon updated.', 'levers' ),
+			'removed' => __( 'Favicon removed.', 'levers' ),
 		);
 		?>
 		<script>
@@ -241,16 +243,27 @@ class Levers_Lever_Favicon extends Levers_Lever {
 			}
 
 			function saveFavicon( id ) {
-				postAjax( 'levers_set_favicon', { attachment_id: String( id ) } );
+				postAjax( 'levers_set_favicon', { attachment_id: String( id ) }, cfg.picked );
 			}
 
 			function removeFavicon( e ) {
 				e.preventDefault();
 				if ( ! window.confirm( cfg.confirm ) ) { return; }
-				postAjax( 'levers_remove_favicon', {} );
+				postAjax( 'levers_remove_favicon', {}, cfg.removed );
 			}
 
-			function postAjax( action, extra ) {
+			function toast( type, message ) {
+				if ( ! window.toastr ) { return; }
+				window.toastr.options = {
+					closeButton:   true,
+					progressBar:   true,
+					positionClass: 'toast-top-right',
+					timeOut:       4000
+				};
+				window.toastr[ type ]( message );
+			}
+
+			function postAjax( action, extra, successMessage ) {
 				var body = new URLSearchParams();
 				body.append( 'action', action );
 				body.append( 'nonce', cfg.nonce );
@@ -262,9 +275,10 @@ class Levers_Lever_Favicon extends Levers_Lever {
 					.then( function ( r ) { return r.json(); } )
 					.then( function ( res ) {
 						if ( res && res.success ) {
-							window.location.reload();
-						} else if ( window.toastr ) {
-							window.toastr.error( ( res && res.data && res.data.message ) || 'Something went wrong.' );
+							toast( 'success', successMessage );
+							window.setTimeout( function () { window.location.reload(); }, 1000 );
+						} else {
+							toast( 'error', ( res && res.data && res.data.message ) || 'Something went wrong.' );
 						}
 					} );
 			}
