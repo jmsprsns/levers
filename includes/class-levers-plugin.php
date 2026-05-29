@@ -69,11 +69,76 @@ final class Levers_Plugin {
 		);
 
 		$this->load_levers();
+		$this->maybe_repair_stale_form_saves();
 		$this->apply_levers();
 
 		if ( is_admin() ) {
 			new Levers_Admin( $this );
 		}
+	}
+
+	/**
+	 * One-time fix for levers that pre-1.1.13 stale-form saves silently
+	 * flipped to off. Pre-1.1.13 the bulk save handler wrote 0 for any
+	 * registered lever whose checkbox wasn't in the POST body, including
+	 * levers added by an update after the settings page was already open
+	 * in the browser. The 1.1.13 hidden-marker fix prevents this going
+	 * forward; this method repairs the specific levers we know shipped
+	 * during that window so they show up "on" again, matching their
+	 * default. A user who deliberately toggled one of these off pre-fix
+	 * will see it come back on once - they can flip it off again and the
+	 * choice will stick from then on.
+	 *
+	 * @return void
+	 */
+	private function maybe_repair_stale_form_saves() {
+		$flag = 'levers_repair_stale_form_v1';
+
+		if ( get_option( $flag ) ) {
+			return;
+		}
+
+		$settings = get_option( self::OPTION, false );
+
+		// No prior save - nothing to repair, default_enabled() already
+		// drives the UI.
+		if ( false === $settings || ! is_array( $settings ) ) {
+			update_option( $flag, 1 );
+			return;
+		}
+
+		// Levers that shipped at the same time as (or right before) the
+		// stale-form fix and are the most likely victims of it.
+		$affected = array( 'enable-menu-duplication' );
+
+		$dirty = false;
+
+		foreach ( $affected as $id ) {
+			if ( ! isset( $this->levers[ $id ] ) ) {
+				continue;
+			}
+
+			if ( ! array_key_exists( $id, $settings ) ) {
+				continue;
+			}
+
+			if ( 0 !== (int) $settings[ $id ] ) {
+				continue;
+			}
+
+			if ( ! $this->levers[ $id ]->default_enabled() ) {
+				continue;
+			}
+
+			$settings[ $id ] = 1;
+			$dirty           = true;
+		}
+
+		if ( $dirty ) {
+			update_option( self::OPTION, $settings );
+		}
+
+		update_option( $flag, 1 );
 	}
 
 	/**

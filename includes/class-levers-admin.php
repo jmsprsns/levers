@@ -223,6 +223,12 @@ class Levers_Admin {
 		check_admin_referer( 'levers_save', 'levers_nonce' );
 
 		$posted   = isset( $_POST['levers'] ) && is_array( $_POST['levers'] ) ? wp_unslash( $_POST['levers'] ) : array();
+		// Hidden per-lever marker rendered alongside each toggle. Lets us
+		// tell "checkbox was unchecked" apart from "lever wasn't on the
+		// form" — the latter happens when a new lever ships after the
+		// settings page was loaded in the browser. Without this, the stale
+		// form would silently flip every newly-added lever to off.
+		$present = isset( $_POST['levers_present'] ) && is_array( $_POST['levers_present'] ) ? wp_unslash( $_POST['levers_present'] ) : array();
 		$levers   = $this->plugin->get_levers();
 		$settings = array();
 		$changed  = array();
@@ -232,10 +238,21 @@ class Levers_Admin {
 		// "on" state was just a default, not a real user choice, so
 		// on_enable() fires for every lever the user keeps on instead of
 		// the defaults silently sliding in with no setup.
-		$first_save = ( false === get_option( Levers_Plugin::OPTION, false ) );
+		$first_save  = ( false === get_option( Levers_Plugin::OPTION, false ) );
+		$prior       = $first_save ? array() : (array) get_option( Levers_Plugin::OPTION, array() );
 
 		foreach ( $levers as $id => $lever ) {
 			$was_enabled = $first_save ? false : $this->plugin->is_enabled( $id );
+
+			// Lever wasn't on the submitted form at all — almost always a
+			// stale form (the page was loaded before this lever shipped).
+			// Preserve its prior value (or its default, if never saved),
+			// don't let the empty $posted[$id] flip it to off.
+			if ( ! isset( $present[ $id ] ) ) {
+				$preserved       = array_key_exists( $id, $prior ) ? (bool) $prior[ $id ] : (bool) $lever->default_enabled();
+				$settings[ $id ] = $preserved ? 1 : 0;
+				continue;
+			}
 
 			// Unavailable levers cannot be enabled, regardless of what was
 			// posted (the checkbox is disabled in the UI, but defend in
@@ -388,6 +405,7 @@ class Levers_Admin {
 											<p class="levers-item__desc"><?php echo esc_html( $lever->description() ); ?></p>
 										</div>
 										<?php $tooltip = ( ! $available && '' !== $lever->unavailable_reason() ) ? $lever->unavailable_reason() : ''; ?>
+										<input type="hidden" name="levers_present[<?php echo esc_attr( $id ); ?>]" value="1" />
 										<label class="levers-toggle"<?php if ( '' !== $tooltip ) : ?> data-tooltip="<?php echo esc_attr( $tooltip ); ?>"<?php endif; ?>>
 											<input
 												type="checkbox"
