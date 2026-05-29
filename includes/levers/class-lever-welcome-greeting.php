@@ -23,7 +23,7 @@ class Levers_Lever_Welcome_Greeting extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function title() {
-		return __( 'Change "Howdy" to "Welcome Back"', 'levers' );
+		return __( 'Change "Howdy" to "Welcome back"', 'levers' );
 	}
 
 	/**

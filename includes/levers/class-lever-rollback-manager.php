@@ -44,7 +44,7 @@ class Levers_Lever_Rollback_Manager extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function title() {
-		return __( 'Rollback Manager', 'levers' );
+		return __( 'Rollback manager', 'levers' );
 	}
 
 	/**
