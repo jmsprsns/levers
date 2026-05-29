@@ -81,6 +81,7 @@ Find it under Settings > Levers.
 * Remove double slashes from URLs - collapses // inside link and image paths, resolving the "Double slash in URL" warning SEO tools flag.
 * Search engine visibility warning - flags when "Discourage search engines" is on, with a one-click fix.
 * User last login - adds a sortable "Last Login" column to the Users screen showing each user's last login time.
+* Rollback manager - adds a "Rollback" row action to each plugin so you can revert any wordpress.org plugin to a previous version in one click.
 
 == Installation ==
 
