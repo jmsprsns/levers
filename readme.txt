@@ -46,6 +46,7 @@ Find it under Settings > Levers.
 * Hide updates from non-admins - blanks update nags and counters for users who can't update.
 * Strip EXIF/GPS from uploads - removes EXIF metadata (and GPS) from uploaded JPEGs.
 * Enable post/page duplication - adds a Duplicate row action that clones posts, pages and CPTs as drafts.
+* Enable menu duplication - adds a Duplicate Menu link on Appearance > Menus that clones a menu with all items, hierarchy and meta intact.
 * Disable admin fade transitions - turns off WordPress 7.0's wp-view-transitions-admin stylesheet.
 * Header & footer scripts - paste raw code into the head, body-open and footer of every page.
 * Hide admin footer credit - removes the "Thank you for creating with WordPress" footer.

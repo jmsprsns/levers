@@ -111,6 +111,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-hide-updates-from-non-admins.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-strip-exif-uploads.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-enable-post-duplication.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-enable-menu-duplication.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-admin-transitions.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-header-footer-scripts.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-custom-frontend-css.php';
@@ -191,6 +192,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Hide_Updates_From_Non_Admins() );
 		$this->register( new Levers_Lever_Strip_Exif_Uploads() );
 		$this->register( new Levers_Lever_Enable_Post_Duplication() );
+		$this->register( new Levers_Lever_Enable_Menu_Duplication() );
 		$this->register( new Levers_Lever_Disable_Admin_Transitions() );
 		$this->register( new Levers_Lever_Header_Footer_Scripts() );
 		$this->register( new Levers_Lever_Custom_Frontend_Css() );
