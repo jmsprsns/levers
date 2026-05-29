@@ -144,6 +144,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-smart-punctuation.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-dynamic-copyright-year.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-stop-nav-jumps.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-user-last-login.php';
 
 		$this->register( new Levers_Lever_Welcome_Greeting() );
 		$this->register( new Levers_Lever_Remove_Uncategorized() );
@@ -204,6 +205,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Remove_Emoji_Scripts() );
 		$this->register( new Levers_Lever_Disable_Jquery_Migrate() );
 		$this->register( new Levers_Lever_Disable_Embeds() );
+		$this->register( new Levers_Lever_User_Last_Login() );
 	}
 
 	/**
