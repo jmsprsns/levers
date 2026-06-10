@@ -159,6 +159,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-block-bad-bots.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-close-comment-spam.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-prevent-blog-spam.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-disallowed-spam-ips.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-remove-comment-url-field.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-auto-empty-comment-trash.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-email-obfuscation.php';
@@ -243,6 +244,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Block_Bad_Bots() );
 		$this->register( new Levers_Lever_Close_Comment_Spam() );
 		$this->register( new Levers_Lever_Prevent_Blog_Spam() );
+		$this->register( new Levers_Lever_Disallowed_Spam_Ips() );
 		$this->register( new Levers_Lever_Remove_Comment_Url_Field() );
 		$this->register( new Levers_Lever_Auto_Empty_Comment_Trash() );
 		$this->register( new Levers_Lever_Email_Obfuscation() );
