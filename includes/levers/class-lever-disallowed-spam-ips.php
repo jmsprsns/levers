@@ -43,7 +43,7 @@ class Levers_Lever_Disallowed_Spam_Ips extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function description() {
-		return __( 'Auto-spams new comments from IPs that posted comments you previously marked as spam. Editable list under Settings > Discussion.', 'levers' );
+		return __( 'Auto-spams new comments and WooCommerce reviews from IPs you previously marked as spam. Editable list under Settings > Discussion.', 'levers' );
 	}
 
 	/**
