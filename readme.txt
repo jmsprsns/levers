@@ -29,6 +29,7 @@ Find it under Settings > Levers.
 * Limit login attempts - blocks brute-force logins per IP, with a ban log.
 * Close blog comment spam exploit - holds comments for review to beat a spam exploit.
 * Prevent links in blog comments - marks comments that contain a link as spam.
+* Track spam IPs - adds a Disallowed Spam IPs list to Settings > Discussion; spammed comments add their IP, approved ones remove it, future comments from listed IPs are auto-spammed.
 * Remove comment website field - drops the "Website" slot from the comment form.
 * Auto-empty spam & trash comments - daily cron purges spam/trash older than 30 days.
 * Email obfuscation - rewrites email addresses in content as HTML entities to defeat harvesters.
