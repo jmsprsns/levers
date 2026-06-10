@@ -64,9 +64,17 @@ class Levers_Lever_Disallowed_Spam_Ips extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function run() {
-		// Settings > Discussion field, registered on the discussion option
-		// group so options.php will save it for us.
+		// Whitelist the option on the 'discussion' settings group AND drop
+		// a hidden fallback input into the form, so:
+		//   - options.php accepts the option on save, and
+		//   - if JS is off and the user saves the page, the current value
+		//     round-trips through the form instead of getting wiped.
 		add_action( 'admin_init', array( $this, 'register_settings_field' ) );
+
+		// Inline JS on options-discussion.php builds the real <tr> and
+		// inserts it directly after the Disallowed Comment Keys row, then
+		// removes the hidden fallback so we don't submit two values.
+		add_action( 'admin_print_footer_scripts-options-discussion.php', array( $this, 'print_injection_script' ) );
 
 		// Real-time: auto-spam new comments whose IP is on the list.
 		add_filter( 'pre_comment_approved', array( $this, 'flag_known_spam_ip' ), 30, 2 );
@@ -80,8 +88,10 @@ class Levers_Lever_Disallowed_Spam_Ips extends Levers_Lever {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * Register the option and add a section + field to Settings > Discussion,
-	 * placed right after the built-in "Disallowed Comment Keys" textarea.
+	 * Register the option and a no-title section whose only output is a
+	 * hidden input pre-seeded with the current value. The section gets no
+	 * registered fields, so do_settings_sections() emits nothing else for
+	 * it (no h2, no form-table).
 	 *
 	 * @return void
 	 */
@@ -98,44 +108,116 @@ class Levers_Lever_Disallowed_Spam_Ips extends Levers_Lever {
 
 		add_settings_section(
 			'levers_disallowed_spam_ips_section',
-			__( 'Disallowed Spam IPs', 'levers' ),
-			array( $this, 'render_section_intro' ),
+			'',
+			array( $this, 'render_form_fallback' ),
 			'discussion'
 		);
-
-		add_settings_field(
-			self::OPTION,
-			__( 'Disallowed Spam IPs', 'levers' ),
-			array( $this, 'render_field' ),
-			'discussion',
-			'levers_disallowed_spam_ips_section',
-			array( 'label_for' => self::OPTION )
-		);
 	}
 
 	/**
-	 * Description paragraph rendered between the section heading and the
-	 * textarea.
+	 * Hidden input rendered inside the Settings > Discussion form so that
+	 * a JS-disabled save preserves the current value instead of clearing
+	 * the option.
 	 *
 	 * @return void
 	 */
-	public function render_section_intro() {
-		echo '<p>' . esc_html__( 'One IP address per line. New comments from any IP on this list are automatically marked as spam. Marking a comment as spam adds its IP here; approving a spam comment removes it.', 'levers' ) . '</p>';
-	}
-
-	/**
-	 * The textarea itself.
-	 *
-	 * @return void
-	 */
-	public function render_field() {
+	public function render_form_fallback() {
 		$value = (string) get_option( self::OPTION, '' );
 
 		printf(
-			'<textarea name="%1$s" id="%1$s" rows="5" cols="50" class="large-text code">%2$s</textarea>',
+			'<input type="hidden" name="%1$s" value="%2$s" data-levers-spam-ips-fallback="1">',
 			esc_attr( self::OPTION ),
-			esc_textarea( $value )
+			esc_attr( $value )
 		);
+	}
+
+	/**
+	 * Print the inline script that builds a textarea row matching core's
+	 * Disallowed Comment Keys markup and inserts it right after that row.
+	 *
+	 * The script also removes the hidden fallback input so the form
+	 * doesn't submit two values under the same name.
+	 *
+	 * @return void
+	 */
+	public function print_injection_script() {
+		$config = array(
+			'optionName' => self::OPTION,
+			'title'      => __( 'Disallowed Spam IPs', 'levers' ),
+			'label'      => __( 'When a comment or WooCommerce review is submitted from an IP address on this list, it is marked as spam automatically. Marking a comment as spam adds its IP here; approving a spam comment removes it. One IP address per line.', 'levers' ),
+			'value'      => (string) get_option( self::OPTION, '' ),
+		);
+		?>
+		<script>
+		(function () {
+			var cfg = <?php echo wp_json_encode( $config ); ?>;
+
+			function inject() {
+				var anchor = document.getElementById( 'disallowed_keys' );
+				if ( ! anchor || ! anchor.closest ) { return; }
+
+				var anchorRow = anchor.closest( 'tr' );
+				if ( ! anchorRow || ! anchorRow.parentNode ) { return; }
+
+				// Already injected (e.g., script ran twice) - bail.
+				if ( document.getElementById( cfg.optionName ) ) { return; }
+
+				var row = document.createElement( 'tr' );
+
+				var th = document.createElement( 'th' );
+				th.setAttribute( 'scope', 'row' );
+				th.textContent = cfg.title;
+				row.appendChild( th );
+
+				var td = document.createElement( 'td' );
+
+				var fs = document.createElement( 'fieldset' );
+				var legend = document.createElement( 'legend' );
+				legend.className = 'screen-reader-text';
+				var legendSpan = document.createElement( 'span' );
+				legendSpan.textContent = cfg.title;
+				legend.appendChild( legendSpan );
+				fs.appendChild( legend );
+
+				var labelP = document.createElement( 'p' );
+				var labelEl = document.createElement( 'label' );
+				labelEl.setAttribute( 'for', cfg.optionName );
+				labelEl.textContent = cfg.label;
+				labelP.appendChild( labelEl );
+				fs.appendChild( labelP );
+
+				var taP = document.createElement( 'p' );
+				var ta = document.createElement( 'textarea' );
+				ta.setAttribute( 'name', cfg.optionName );
+				ta.setAttribute( 'id', cfg.optionName );
+				ta.setAttribute( 'rows', '10' );
+				ta.setAttribute( 'cols', '50' );
+				ta.className = 'large-text code';
+				ta.value = cfg.value;
+				taP.appendChild( ta );
+				fs.appendChild( taP );
+
+				td.appendChild( fs );
+				row.appendChild( td );
+
+				anchorRow.parentNode.insertBefore( row, anchorRow.nextSibling );
+
+				// Drop the hidden fallback so the textarea is the only
+				// input submitting this option.
+				var fallback = document.querySelector( 'input[data-levers-spam-ips-fallback="1"]' );
+				if ( fallback && fallback.parentNode ) {
+					fallback.parentNode.removeChild( fallback );
+				}
+			}
+
+			if ( document.readyState === 'loading' ) {
+				document.addEventListener( 'DOMContentLoaded', inject );
+			} else {
+				inject();
+			}
+		}());
+		</script>
+		<?php
 	}
 
 	/**
