@@ -33,11 +33,14 @@ final class Levers_Plugin {
 	private $levers = array();
 
 	/**
-	 * Category slug => display label.
+	 * Category slug => display label. Built lazily by {@see get_categories()}
+	 * so the translation calls don't run until after `init` (WP 6.7+ warns
+	 * about loading a textdomain earlier, and the plugin boots on
+	 * `plugins_loaded`).
 	 *
-	 * @var array<string,string>
+	 * @var array<string,string>|null
 	 */
-	private $categories = array();
+	private $categories = null;
 
 	/**
 	 * Get (and lazily create) the shared instance.
@@ -56,18 +59,6 @@ final class Levers_Plugin {
 	 * Wire everything up.
 	 */
 	private function __construct() {
-		$this->categories = array(
-			'branding'          => __( 'Branding', 'levers' ),
-			'wordpress-cleanup' => __( 'WordPress Cleanup', 'levers' ),
-			'frontend'          => __( 'Frontend', 'levers' ),
-			'security'          => __( 'Security', 'levers' ),
-			'performance'       => __( 'Performance', 'levers' ),
-			'seo'               => __( 'SEO', 'levers' ),
-			'spam'              => __( 'Anti-Spam', 'levers' ),
-			'maintenance'       => __( 'Maintenance', 'levers' ),
-			'admin-tools'       => __( 'Admin Tools', 'levers' ),
-		);
-
 		$this->load_levers();
 		$this->maybe_repair_stale_form_saves();
 		$this->apply_levers();
@@ -323,6 +314,20 @@ final class Levers_Plugin {
 	 * @return array<string,string>
 	 */
 	public function get_categories() {
+		if ( null === $this->categories ) {
+			$this->categories = array(
+				'branding'          => __( 'Branding', 'levers' ),
+				'wordpress-cleanup' => __( 'WordPress Cleanup', 'levers' ),
+				'frontend'          => __( 'Frontend', 'levers' ),
+				'security'          => __( 'Security', 'levers' ),
+				'performance'       => __( 'Performance', 'levers' ),
+				'seo'               => __( 'SEO', 'levers' ),
+				'spam'              => __( 'Anti-Spam', 'levers' ),
+				'maintenance'       => __( 'Maintenance', 'levers' ),
+				'admin-tools'       => __( 'Admin Tools', 'levers' ),
+			);
+		}
+
 		return $this->categories;
 	}
 
