@@ -272,20 +272,44 @@ class Levers_Lever_Header_Footer_Scripts extends Levers_Lever {
 						body.append( ta.name, ta.value );
 					} );
 
+					function report( msg ) {
+						if ( window.toastr ) { window.toastr.error( msg ); } else { window.alert( msg ); }
+					}
+
 					fetch( cfg.ajaxurl, { method: 'POST', credentials: 'same-origin', body: body } )
-						.then( function ( r ) { return r.json(); } )
-						.then( function ( res ) {
+						.then( function ( r ) {
+							// Read as text first: a security plugin / WAF or an
+							// expired nonce can return a non-JSON 403, which
+							// would otherwise throw and be swallowed silently.
+							return r.text().then( function ( text ) {
+								var res = null;
+								try { res = JSON.parse( text ); } catch ( err ) {}
+								return { ok: r.ok, status: r.status, res: res };
+							} );
+						} )
+						.then( function ( out ) {
 							saveBtn.disabled = false;
-							if ( res && res.success ) {
+
+							if ( out.res && out.res.success ) {
 								if ( window.toastr ) { window.toastr.success( cfg.saved ); }
 								close();
-							} else if ( window.toastr ) {
-								window.toastr.error( ( res && res.data && res.data.message ) || cfg.failed );
-							} else {
-								window.alert( cfg.failed );
+								return;
 							}
+
+							if ( out.res && out.res.data && out.res.data.message ) {
+								report( out.res.data.message );
+								return;
+							}
+
+							// Non-JSON / unexpected response - surface the HTTP
+							// status so a 403 (blocked <script> payload or stale
+							// session) isn't mistaken for "nothing happened".
+							report( cfg.failed + ' (HTTP ' + out.status + ')' );
 						} )
-						.catch( function () { saveBtn.disabled = false; } );
+						.catch( function () {
+							saveBtn.disabled = false;
+							report( cfg.failed );
+						} );
 				} );
 			}
 		}() );

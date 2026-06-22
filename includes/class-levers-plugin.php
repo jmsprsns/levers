@@ -191,6 +191,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-add-missing-image-dimensions.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-remove-emoji-scripts.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-jquery-migrate.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-swap-google-fonts-display.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-embeds.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-hide-wp-version.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-block-user-enumeration.php';
@@ -265,6 +266,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Add_Missing_Image_Dimensions() );
 		$this->register( new Levers_Lever_Remove_Emoji_Scripts() );
 		$this->register( new Levers_Lever_Disable_Jquery_Migrate() );
+		$this->register( new Levers_Lever_Swap_Google_Fonts_Display() );
 		$this->register( new Levers_Lever_Disable_Embeds() );
 		$this->register( new Levers_Lever_User_Last_Login() );
 		$this->register( new Levers_Lever_Rollback_Manager() );
