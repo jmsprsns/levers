@@ -47,7 +47,7 @@ class Levers_Lever_Swap_Google_Fonts_Display extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function description() {
-		return __( "Adds display=swap to Google Fonts stylesheets so text stays visible while the webfont loads, instead of the browser hiding it. Avoids the flash of invisible text and helps Core Web Vitals.", 'levers' );
+		return __( "Adds display=swap to Google Fonts stylesheets so text stays visible while the webfont loads. Avoids the flash of invisible text and helps Core Web Vitals.", 'levers' );
 	}
 
 	/**
