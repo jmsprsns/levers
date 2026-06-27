@@ -204,6 +204,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-dynamic-copyright-year.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-stop-nav-jumps.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-user-last-login.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-last-modified-time.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-rollback-manager.php';
 
 		$this->register( new Levers_Lever_Welcome_Greeting() );
@@ -269,6 +270,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Swap_Google_Fonts_Display() );
 		$this->register( new Levers_Lever_Disable_Embeds() );
 		$this->register( new Levers_Lever_User_Last_Login() );
+		$this->register( new Levers_Lever_Last_Modified_Time() );
 		$this->register( new Levers_Lever_Rollback_Manager() );
 	}
 
