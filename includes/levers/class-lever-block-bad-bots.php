@@ -650,15 +650,28 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 			header( 'Content-Type: text/html; charset=utf-8' );
 		}
 
+		// This runs at plugins_loaded - before `init` - so calling __() here
+		// would JIT-load the levers textdomain too early and trip WP 6.7's
+		// _load_textdomain_just_in_time notice. Only translate when init has
+		// already fired (it never has on this path); otherwise fall back to
+		// the English source strings.
+		$late = did_action( 'init' );
+
+		$title_text = $late ? __( 'Access Denied', 'levers' ) : 'Access Denied';
+		$body_text  = $late
+			? __( 'Your IP address has been blocked due to suspicious activity. If you believe this is a mistake, please contact us and include your IP address.', 'levers' )
+			: 'Your IP address has been blocked due to suspicious activity. If you believe this is a mistake, please contact us and include your IP address.';
+		$ip_label   = $late ? __( 'Your IP:', 'levers' ) : 'Your IP:';
+
 		$ip_block = '' === $ip
 			? ''
-			: '<p class="ip">' . __( 'Your IP:', 'levers' ) . ' <code>' . htmlspecialchars( $ip, ENT_QUOTES, 'UTF-8' ) . '</code></p>';
+			: '<p class="ip">' . $ip_label . ' <code>' . htmlspecialchars( $ip, ENT_QUOTES, 'UTF-8' ) . '</code></p>';
 
 		echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>'
-			, __( 'Access Denied', 'levers' )
+			, $title_text
 			, '</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:560px;margin:80px auto;padding:0 24px;color:#1d2327;line-height:1.5}h1{font-size:28px;margin:0 0 16px}p{margin:0 0 12px}.ip code{background:#f1f1f1;padding:2px 6px;border-radius:3px;font-size:13px}</style></head><body>'
-			, '<h1>', __( 'Access Denied', 'levers' ), '</h1>'
-			, '<p>', __( 'Your IP address has been blocked due to suspicious activity. If you believe this is a mistake, please contact us and include your IP address.', 'levers' ), '</p>'
+			, '<h1>', $title_text, '</h1>'
+			, '<p>', $body_text, '</p>'
 			, $ip_block
 			, '</body></html>';
 		exit;

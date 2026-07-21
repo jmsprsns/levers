@@ -67,6 +67,15 @@ class Levers_Lever_Welcome_Greeting extends Levers_Lever {
 	 */
 	public function filter_greeting( $translation, $text, $domain ) {
 		if ( 'default' === $domain && 'Howdy, %s' === $text ) {
+			// Never translate before `init`: this gettext callback fires for
+			// every string any plugin translates, so if something translates
+			// "Howdy, %s" early, calling __() here would JIT-load the levers
+			// textdomain pre-init and trip WP 6.7's _load_textdomain_just_in_time
+			// notice. The toolbar renders long after init, so nothing is lost.
+			if ( ! did_action( 'init' ) ) {
+				return $translation;
+			}
+
 			return __( 'Welcome back, %s!', 'levers' );
 		}
 
