@@ -197,6 +197,7 @@ final class Levers_Plugin {
 		require_once LEVERS_DIR . 'includes/levers/class-lever-block-user-enumeration.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-block-php-in-uploads.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-add-security-headers.php';
+		require_once LEVERS_DIR . 'includes/levers/class-lever-rest-batch-hardening.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-file-editor.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-remove-root-info-files.php';
 		require_once LEVERS_DIR . 'includes/levers/class-lever-disable-directory-browsing.php';
@@ -230,6 +231,7 @@ final class Levers_Plugin {
 		$this->register( new Levers_Lever_Block_User_Enumeration() );
 		$this->register( new Levers_Lever_Block_Php_In_Uploads() );
 		$this->register( new Levers_Lever_Add_Security_Headers() );
+		$this->register( new Levers_Lever_Rest_Batch_Hardening() );
 		$this->register( new Levers_Lever_Disable_File_Editor() );
 		$this->register( new Levers_Lever_Remove_Root_Info_Files() );
 		$this->register( new Levers_Lever_Disable_Directory_Browsing() );

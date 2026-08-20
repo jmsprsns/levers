@@ -75,6 +75,7 @@ Find it under Settings > Levers.
 * Stop nav menu jumps - rewrites placeholder href="#" in nav menus so dropdown parents don't scroll the page to the top.
 * Add missing image dimensions - sets width/height on <img> and <source> tags missing them, preventing layout shift and helping Core Web Vitals.
 * Add security headers - sends X-Frame-Options, X-Content-Type-Options, Referrer-Policy and a restrictive Permissions-Policy on every response.
+* REST batch hardening - requires authentication for the REST batch API (/batch/v1), an endpoint abused by automated attacks.
 * Allow SVG uploads (sanitized) - lets admins upload SVGs, sanitizing each file to strip scripts, event handlers and external references.
 * Clean rel on internal links - strips SEO-blocking rel tokens (nofollow, sponsored, ugc, noindex...) from links pointing at your own domain.
 * Custom admin CSS - paste your own CSS to restyle the dashboard, menus or any wp-admin screen.
