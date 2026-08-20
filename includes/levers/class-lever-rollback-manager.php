@@ -133,8 +133,8 @@ class Levers_Lever_Rollback_Manager extends Levers_Lever {
 	public function register_page() {
 		add_submenu_page(
 			'',
-			__( 'Rollback Plugin', 'levers' ),
-			__( 'Rollback Plugin', 'levers' ),
+			__( 'Rollback plugin', 'levers' ),
+			__( 'Rollback plugin', 'levers' ),
 			'update_plugins',
 			self::PAGE_SLUG,
 			array( $this, 'render_page' )

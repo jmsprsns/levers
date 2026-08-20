@@ -170,7 +170,7 @@ class Levers_Lever_Local_Avatars extends Levers_Lever {
 		$attachment_id = (int) get_user_meta( $user->ID, self::META_KEY, true );
 		$preview_url   = $attachment_id > 0 ? wp_get_attachment_image_url( $attachment_id, array( 96, 96 ) ) : '';
 		?>
-		<h2><?php esc_html_e( 'Local Avatar', 'levers' ); ?></h2>
+		<h2><?php esc_html_e( 'Local avatar', 'levers' ); ?></h2>
 		<table class="form-table" role="presentation">
 			<tr>
 				<th><label for="levers-local-avatar-id"><?php esc_html_e( 'Avatar image', 'levers' ); ?></label></th>

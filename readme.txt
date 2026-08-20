@@ -29,7 +29,7 @@ Find it under Settings > Levers.
 * Limit login attempts - blocks brute-force logins per IP, with a ban log.
 * Close blog comment spam exploit - holds comments for review to beat a spam exploit.
 * Prevent links in blog comments - marks comments that contain a link as spam.
-* Track spam IPs - adds a Disallowed Spam IPs list to Settings > Discussion; spammed comments and WooCommerce reviews add their IP, approved ones remove it, future submissions from listed IPs are auto-spammed.
+* Track spam IPs - adds a "Disallowed spam IPs" list to Settings > Discussion; spammed comments and WooCommerce reviews add their IP, approved ones remove it, future submissions from listed IPs are auto-spammed.
 * Remove comment website field - drops the "Website" slot from the comment form.
 * Auto-empty spam & trash comments - daily cron purges spam/trash older than 30 days.
 * Email obfuscation - rewrites email addresses in content as HTML entities to defeat harvesters.
@@ -47,7 +47,7 @@ Find it under Settings > Levers.
 * Hide updates from non-admins - blanks update nags and counters for users who can't update.
 * Strip EXIF/GPS from uploads - removes EXIF metadata (and GPS) from uploaded JPEGs.
 * Enable post/page duplication - adds a Duplicate row action that clones posts, pages and CPTs as drafts.
-* Enable menu duplication - adds a Duplicate Menu link on Appearance > Menus that clones a menu with all items, hierarchy and meta intact.
+* Enable menu duplication - adds a "Duplicate menu" link on Appearance > Menus that clones a menu with all items, hierarchy and meta intact.
 * Disable admin fade transitions - turns off WordPress 7.0's wp-view-transitions-admin stylesheet.
 * Header & footer scripts - paste raw code into the head, body-open and footer of every page.
 * Hide admin footer credit - removes the "Thank you for creating with WordPress" footer.
@@ -82,7 +82,7 @@ Find it under Settings > Levers.
 * Custom frontend CSS - paste your own CSS into every front-end page, no theme editing required.
 * Remove double slashes from URLs - collapses // inside link and image paths, resolving the "Double slash in URL" warning SEO tools flag.
 * Search engine visibility warning - flags when "Discourage search engines" is on, with a one-click fix.
-* User last login - adds a sortable "Last Login" column to the Users screen showing each user's last login time.
+* User last login - adds a sortable "Last login" column to the Users screen showing each user's last login time.
 * Last modified time - adds a sortable "Modified" column beside the publish date on the Posts and Pages screens so you can sort by when content was last edited.
 * Rollback manager - adds a "Rollback" row action to each plugin so you can revert any wordpress.org plugin to a previous version in one click.
 

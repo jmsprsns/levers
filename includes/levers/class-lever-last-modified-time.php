@@ -33,7 +33,7 @@ class Levers_Lever_Last_Modified_Time extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function title() {
-		return __( 'Last Modified Time', 'levers' );
+		return __( 'Last modified time', 'levers' );
 	}
 
 	/**

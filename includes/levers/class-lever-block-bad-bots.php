@@ -657,7 +657,7 @@ class Levers_Lever_Block_Bad_Bots extends Levers_Lever {
 		// the English source strings.
 		$late = did_action( 'init' );
 
-		$title_text = $late ? __( 'Access Denied', 'levers' ) : 'Access Denied';
+		$title_text = $late ? __( 'Access denied', 'levers' ) : 'Access denied';
 		$body_text  = $late
 			? __( 'Your IP address has been blocked due to suspicious activity. If you believe this is a mistake, please contact us and include your IP address.', 'levers' )
 			: 'Your IP address has been blocked due to suspicious activity. If you believe this is a mistake, please contact us and include your IP address.';

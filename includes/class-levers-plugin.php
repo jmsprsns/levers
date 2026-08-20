@@ -323,14 +323,14 @@ final class Levers_Plugin {
 		if ( null === $this->categories ) {
 			$this->categories = array(
 				'branding'          => __( 'Branding', 'levers' ),
-				'wordpress-cleanup' => __( 'WordPress Cleanup', 'levers' ),
+				'wordpress-cleanup' => __( 'WordPress cleanup', 'levers' ),
 				'frontend'          => __( 'Frontend', 'levers' ),
 				'security'          => __( 'Security', 'levers' ),
 				'performance'       => __( 'Performance', 'levers' ),
 				'seo'               => __( 'SEO', 'levers' ),
-				'spam'              => __( 'Anti-Spam', 'levers' ),
+				'spam'              => __( 'Anti-spam', 'levers' ),
 				'maintenance'       => __( 'Maintenance', 'levers' ),
-				'admin-tools'       => __( 'Admin Tools', 'levers' ),
+				'admin-tools'       => __( 'Admin tools', 'levers' ),
 			);
 		}
 

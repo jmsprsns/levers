@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Records each user's last login timestamp and shows it as a sortable
- * "Last Login" column on the Users list table.
+ * "Last login" column on the Users list table.
  *
  * Storage: a single user-meta row per user (key: levers_user_last_login)
  * holding a Unix timestamp written from the wp_login action.
@@ -47,7 +47,7 @@ class Levers_Lever_User_Last_Login extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function description() {
-		return __( 'Adds a sortable "Last Login" column to the Users screen so you can spot dormant accounts and recent activity at a glance.', 'levers' );
+		return __( 'Adds a sortable "Last login" column to the Users screen so you can spot dormant accounts and recent activity at a glance.', 'levers' );
 	}
 
 	/**
@@ -102,18 +102,18 @@ class Levers_Lever_User_Last_Login extends Levers_Lever {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * Inject the "Last Login" header into the Users list columns.
+	 * Inject the "Last login" header into the Users list columns.
 	 *
 	 * @param array $columns Existing columns.
 	 * @return array
 	 */
 	public function add_column( $columns ) {
-		$columns[ self::COLUMN_ID ] = __( 'Last Login', 'levers' );
+		$columns[ self::COLUMN_ID ] = __( 'Last login', 'levers' );
 		return $columns;
 	}
 
 	/**
-	 * Render a cell for the "Last Login" column.
+	 * Render a cell for the "Last login" column.
 	 *
 	 * @param string $output      Existing output for this column.
 	 * @param string $column_name Column id being rendered.

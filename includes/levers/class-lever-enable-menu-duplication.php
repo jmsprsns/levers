@@ -8,7 +8,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Adds a "Duplicate Menu" link beside "Delete Menu" on the Appearance >
+ * Adds a "Duplicate menu" link beside "Delete Menu" on the Appearance >
  * Menus screen.
  *
  * Clicking it creates a copy of the currently-selected menu with:
@@ -47,7 +47,7 @@ class Levers_Lever_Enable_Menu_Duplication extends Levers_Lever {
 	 * {@inheritDoc}
 	 */
 	public function description() {
-		return __( 'Adds a Duplicate Menu link beside Delete Menu on the Menus screen. Clones every item, preserving hierarchy and meta, into a new draft menu.', 'levers' );
+		return __( 'Adds a "Duplicate menu" link beside "Delete Menu" on the Menus screen. Clones every item, preserving hierarchy and meta, into a new draft menu.', 'levers' );
 	}
 
 	/**
@@ -81,7 +81,7 @@ class Levers_Lever_Enable_Menu_Duplication extends Levers_Lever {
 	 * ------------------------------------------------------------------- */
 
 	/**
-	 * Print a tiny script that inserts a "Duplicate Menu" link next to the
+	 * Print a tiny script that inserts a "Duplicate menu" link next to the
 	 * existing "Delete Menu" link in the menu editor.
 	 *
 	 * Core's nav-menus.php doesn't expose a hook in that spot, so we splice
@@ -118,7 +118,7 @@ class Levers_Lever_Enable_Menu_Duplication extends Levers_Lever {
 		<script>
 		(function () {
 			var leversDuplicateUrl   = <?php echo wp_json_encode( $url ); ?>;
-			var leversDuplicateLabel = <?php echo wp_json_encode( __( 'Duplicate Menu', 'levers' ) ); ?>;
+			var leversDuplicateLabel = <?php echo wp_json_encode( __( 'Duplicate menu', 'levers' ) ); ?>;
 
 			function inject() {
 				var del = document.querySelector( '.menu-edit .delete-action' );

@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Learns spam IPs as you moderate.
  *
- * Adds a "Disallowed Spam IPs" textarea directly below WordPress's
+ * Adds a "Disallowed spam IPs" textarea directly below WordPress's
  * "Disallowed Comment Keys" on Settings > Discussion. Whenever a comment
  * is marked as spam, its commenter IP is added to the list; any future
  * comment from that IP is automatically marked as spam on submission. If
@@ -143,7 +143,7 @@ class Levers_Lever_Disallowed_Spam_Ips extends Levers_Lever {
 	public function print_injection_script() {
 		$config = array(
 			'optionName' => self::OPTION,
-			'title'      => __( 'Disallowed Spam IPs', 'levers' ),
+			'title'      => __( 'Disallowed spam IPs', 'levers' ),
 			'label'      => __( 'When a comment or WooCommerce review is submitted from an IP address on this list, it is marked as spam automatically. Marking a comment as spam adds its IP here; approving a spam comment removes it. One IP address per line.', 'levers' ),
 			'value'      => (string) get_option( self::OPTION, '' ),
 		);
