@@ -19,6 +19,12 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 	/** Option holding the per-IP record store. */
 	const OPTION = 'levers_login_guard';
 
+	/** Option holding site-wide running totals (never pruned). */
+	const STATS_OPTION = 'levers_login_guard_stats';
+
+	/** Most rows the ban log will render. */
+	const LOG_LIMIT = 500;
+
 	/** Failed logins allowed per IP within the 24 hour window. */
 	const MAX_ATTEMPTS = 5;
 
@@ -73,6 +79,14 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 	public function run() {
 		add_filter( 'authenticate', array( $this, 'filter_authenticate' ), 50, 3 );
 
+		// REST API Basic-auth (application passwords) never passes through
+		// the `authenticate` filter: core calls
+		// wp_authenticate_application_password() directly from
+		// determine_current_user. Without these two hooks a REST brute force
+		// is invisible to the lever - never counted, never banned.
+		add_action( 'application_password_failed_authentication', array( $this, 'on_app_password_failure' ) );
+		add_filter( 'rest_authentication_errors', array( $this, 'block_rest_when_banned' ) );
+
 		if ( is_admin() ) {
 			add_action( 'wp_ajax_levers_remove_ban', array( $this, 'ajax_remove_ban' ) );
 			add_action( 'admin_footer', array( $this, 'render_modal' ) );
@@ -112,7 +126,7 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 
 		// A genuine failed attempt: both fields filled, core rejected them.
 		if ( is_wp_error( $user ) && '' !== $username && '' !== $password ) {
-			$record = $this->register_failure( $ip );
+			$record = $this->record_failure( $ip );
 
 			if ( $this->is_blocked( $record ) ) {
 				return new WP_Error( 'levers_login_blocked', $this->block_message( $record ) );
@@ -123,6 +137,73 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 		}
 
 		return $user;
+	}
+
+	/**
+	 * Count a failed REST API Basic-auth (application password) attempt.
+	 *
+	 * Fires from wp_authenticate_application_password(), which core calls
+	 * directly for REST requests - bypassing the `authenticate` filter.
+	 *
+	 * @return void
+	 */
+	public function on_app_password_failure() {
+		$ip = $this->get_ip();
+
+		// Banned IPs are rejected elsewhere; don't keep inflating the count.
+		if ( $this->is_blocked( $this->get_record( $ip ) ) ) {
+			return;
+		}
+
+		$this->record_failure( $ip );
+	}
+
+	/**
+	 * Refuse REST API requests from banned IPs.
+	 *
+	 * @param WP_Error|null|true $result Current authentication result.
+	 * @return WP_Error|null|true
+	 */
+	public function block_rest_when_banned( $result ) {
+		// Respect an earlier, more specific verdict.
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		$record = $this->get_record( $this->get_ip() );
+
+		if ( $this->is_blocked( $record ) ) {
+			return new WP_Error(
+				'levers_login_blocked',
+				wp_strip_all_tags( $this->block_message( $record ) ),
+				array( 'status' => 403 )
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Register a failed attempt at most once per request.
+	 *
+	 * One request is one login attempt, but it can surface through more
+	 * than one hook (an XML-RPC login with an application password fires
+	 * `application_password_failed_authentication` from inside the
+	 * `authenticate` chain, which then reaches filter_authenticate too).
+	 *
+	 * @param string $ip IP address.
+	 * @return array The current record for the IP.
+	 */
+	private function record_failure( $ip ) {
+		static $counted = array();
+
+		if ( isset( $counted[ $ip ] ) ) {
+			return $this->get_record( $ip );
+		}
+
+		$counted[ $ip ] = true;
+
+		return $this->register_failure( $ip );
 	}
 
 	/**
@@ -342,22 +423,74 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 		}
 
 		$record['fails']++;
+		$record['total_fails']++;
 		$record['last_seen'] = $now;
+
+		$stats = array( 'fails' => 1 );
 
 		if ( $record['fails'] >= self::MAX_ATTEMPTS ) {
 			$record['blocks']++;
 			$record['blocked_until'] = $now + DAY_IN_SECONDS;
 			$record['fails']         = 0;
 			$record['window_start']  = 0;
+			$stats['lockouts']       = 1;
 
 			if ( $record['blocks'] >= self::MAX_BLOCKS ) {
 				$record['permanent'] = true;
+				$stats['bans']       = 1;
 			}
 		}
 
 		$this->save_record( $ip, $record );
+		$this->bump_stats( $stats );
 
 		return $record;
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Running totals
+	 * ------------------------------------------------------------------- */
+
+	/**
+	 * Site-wide running totals since the lever started counting. Unlike the
+	 * per-IP store these are never pruned, so the log can always say how
+	 * much traffic the lever has actually turned away.
+	 *
+	 * @return array { fails, lockouts, bans, since }
+	 */
+	private function get_stats() {
+		$defaults = array(
+			'fails'    => 0,
+			'lockouts' => 0,
+			'bans'     => 0,
+			'since'    => 0,
+		);
+
+		$stats = get_option( self::STATS_OPTION, array() );
+
+		return array_merge( $defaults, is_array( $stats ) ? $stats : array() );
+	}
+
+	/**
+	 * Increment running totals.
+	 *
+	 * @param array $increments Counter => amount.
+	 * @return void
+	 */
+	private function bump_stats( array $increments ) {
+		$stats = $this->get_stats();
+
+		if ( ! $stats['since'] ) {
+			$stats['since'] = time();
+		}
+
+		foreach ( $increments as $key => $amount ) {
+			if ( isset( $stats[ $key ] ) ) {
+				$stats[ $key ] = (int) $stats[ $key ] + (int) $amount;
+			}
+		}
+
+		update_option( self::STATS_OPTION, $stats, false );
 	}
 
 	/**
@@ -395,6 +528,7 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 	private function default_record() {
 		return array(
 			'fails'         => 0,
+			'total_fails'   => 0,
 			'window_start'  => 0,
 			'blocks'        => 0,
 			'blocked_until' => 0,
@@ -479,6 +613,47 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 		return $list;
 	}
 
+	/**
+	 * Rows for the ban log: every banned IP first (sorted by address), then
+	 * IPs with recent failures that haven't hit the limit yet, most recent
+	 * first. Capped at LOG_LIMIT so a distributed attack can't render a
+	 * multi-thousand-row modal.
+	 *
+	 * @return array { rows: array IP => record, truncated: int }
+	 */
+	private function log_list() {
+		$store    = $this->get_store();
+		$now      = time();
+		$banned   = array();
+		$watching = array();
+
+		foreach ( $store as $ip => $rec ) {
+			$rec = array_merge( $this->default_record(), (array) $rec );
+
+			if ( ! empty( $rec['permanent'] ) || $rec['blocked_until'] > $now ) {
+				$banned[ $ip ] = $rec;
+			} elseif ( $rec['total_fails'] > 0 || $rec['fails'] > 0 || $rec['blocks'] > 0 ) {
+				$watching[ $ip ] = $rec;
+			}
+		}
+
+		uksort( $banned, 'strnatcmp' );
+		uasort(
+			$watching,
+			function ( $a, $b ) {
+				return (int) $b['last_seen'] <=> (int) $a['last_seen'];
+			}
+		);
+
+		$rows      = $banned + $watching;
+		$truncated = max( 0, count( $rows ) - self::LOG_LIMIT );
+
+		return array(
+			'rows'      => array_slice( $rows, 0, self::LOG_LIMIT, true ),
+			'truncated' => $truncated,
+		);
+	}
+
 	/* ---------------------------------------------------------------------
 	 * Messages
 	 * ------------------------------------------------------------------- */
@@ -550,13 +725,22 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 	 */
 	private function status_label( $record ) {
 		if ( ! empty( $record['permanent'] ) ) {
-			return __( 'Permanent', 'levers' );
+			return __( 'Permanent ban', 'levers' );
+		}
+
+		if ( ! empty( $record['blocked_until'] ) && $record['blocked_until'] > time() ) {
+			return sprintf(
+				/* translators: %s: human-readable time, e.g. "21 hours". */
+				__( 'Locked out, %s left', 'levers' ),
+				human_time_diff( time(), (int) $record['blocked_until'] )
+			);
 		}
 
 		return sprintf(
-			/* translators: %s: human-readable time, e.g. "21 hours". */
-			__( 'Temporary, %s left', 'levers' ),
-			human_time_diff( time(), (int) $record['blocked_until'] )
+			/* translators: 1: failures so far in the current window, 2: failures allowed. */
+			__( 'Watching, %1$d of %2$d', 'levers' ),
+			(int) $record['fails'],
+			self::MAX_ATTEMPTS
 		);
 	}
 
@@ -591,7 +775,10 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 			return;
 		}
 
-		$banned = $this->banned_list();
+		$log   = $this->log_list();
+		$rows  = $log['rows'];
+		$stats = $this->get_stats();
+		$now   = time();
 		?>
 		<div id="levers-banlog" class="levers-modal" hidden>
 			<div class="levers-modal__overlay" data-levers-close></div>
@@ -600,6 +787,22 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 					<h2><?php esc_html_e( 'Login ban log', 'levers' ); ?></h2>
 					<button type="button" class="levers-modal__close" data-levers-close aria-label="<?php esc_attr_e( 'Close', 'levers' ); ?>">&times;</button>
 				</div>
+				<p class="levers-banlog-summary description">
+					<?php
+					if ( $stats['since'] ) {
+						printf(
+							/* translators: 1: failed attempts, 2: temporary lockouts, 3: permanent bans, 4: date counting started. */
+							esc_html__( '%1$s failed login attempts, %2$s lockouts and %3$s permanent bans since %4$s.', 'levers' ),
+							'<strong>' . esc_html( number_format_i18n( (int) $stats['fails'] ) ) . '</strong>',
+							'<strong>' . esc_html( number_format_i18n( (int) $stats['lockouts'] ) ) . '</strong>',
+							'<strong>' . esc_html( number_format_i18n( (int) $stats['bans'] ) ) . '</strong>',
+							esc_html( wp_date( get_option( 'date_format' ), (int) $stats['since'] ) )
+						);
+					} else {
+						esc_html_e( 'No failed login attempts have been recorded yet.', 'levers' );
+					}
+					?>
+				</p>
 				<div class="levers-modal__tools">
 					<input type="search" id="levers-banlog-search" placeholder="<?php esc_attr_e( 'Search by IP address', 'levers' ); ?>" />
 				</div>
@@ -609,28 +812,43 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 							<tr>
 								<th><?php esc_html_e( 'IP address', 'levers' ); ?></th>
 								<th><?php esc_html_e( 'Status', 'levers' ); ?></th>
+								<th><?php esc_html_e( 'Failed attempts', 'levers' ); ?></th>
 								<th><?php esc_html_e( 'Times blocked', 'levers' ); ?></th>
 								<th><?php esc_html_e( 'Last attempt', 'levers' ); ?></th>
 								<th class="levers-banlog-action"></th>
 							</tr>
 						</thead>
 						<tbody>
-							<?php foreach ( $banned as $ip => $rec ) : ?>
-								<tr data-ip="<?php echo esc_attr( $ip ); ?>">
+							<?php foreach ( $rows as $ip => $rec ) : ?>
+								<?php $is_banned = ! empty( $rec['permanent'] ) || $rec['blocked_until'] > $now; ?>
+								<tr data-ip="<?php echo esc_attr( $ip ); ?>" data-banned="<?php echo $is_banned ? '1' : '0'; ?>">
 									<td><code><?php echo esc_html( $ip ); ?></code></td>
 									<td><?php echo esc_html( $this->status_label( $rec ) ); ?></td>
+									<td><?php echo (int) $rec['total_fails']; ?></td>
 									<td><?php echo (int) $rec['blocks']; ?></td>
 									<td><?php echo esc_html( $this->last_seen_label( $rec ) ); ?></td>
 									<td class="levers-banlog-action">
 										<button type="button" class="button button-small levers-unban" data-ip="<?php echo esc_attr( $ip ); ?>">
-											<?php esc_html_e( 'Remove ban', 'levers' ); ?>
+											<?php $is_banned ? esc_html_e( 'Remove ban', 'levers' ) : esc_html_e( 'Clear', 'levers' ); ?>
 										</button>
 									</td>
 								</tr>
 							<?php endforeach; ?>
 						</tbody>
 					</table>
-					<p class="levers-banlog-empty"><?php esc_html_e( 'No IP addresses are currently banned.', 'levers' ); ?></p>
+					<?php if ( $log['truncated'] > 0 ) : ?>
+						<p class="description">
+							<?php
+							printf(
+								/* translators: %s: number of rows not shown. */
+								esc_html__( 'Showing the first %1$d entries; %2$s more recent offenders not listed.', 'levers' ),
+								(int) self::LOG_LIMIT,
+								esc_html( number_format_i18n( $log['truncated'] ) )
+							);
+							?>
+						</p>
+					<?php endif; ?>
+					<p class="levers-banlog-empty"><?php esc_html_e( 'No recent failed login attempts or banned IP addresses.', 'levers' ); ?></p>
 				</div>
 			</div>
 		</div>
@@ -644,9 +862,9 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 				array(
 					'ajaxurl' => admin_url( 'admin-ajax.php' ),
 					'nonce'   => wp_create_nonce( self::NONCE ),
-					'confirm' => __( 'Remove the ban on this IP address?', 'levers' ),
-					'removed' => __( 'Ban removed.', 'levers' ),
-					'failed'  => __( 'The ban could not be removed.', 'levers' ),
+					'confirm' => __( 'Remove this IP address from the log? Any ban on it is lifted.', 'levers' ),
+					'removed' => __( 'Entry removed.', 'levers' ),
+					'failed'  => __( 'The entry could not be removed.', 'levers' ),
 				)
 			); ?>;
 			var search = document.getElementById( 'levers-banlog-search' );
@@ -706,13 +924,15 @@ class Levers_Lever_Limit_Login_Attempts extends Levers_Lever {
 			} );
 
 			function refresh() {
-				var rows  = modal.querySelectorAll( 'tbody tr' ).length;
-				var empty = modal.querySelector( '.levers-banlog-empty' );
-				var table = modal.querySelector( '.levers-banlog-table' );
+				var rows   = modal.querySelectorAll( 'tbody tr' ).length;
+				var banned = modal.querySelectorAll( 'tbody tr[data-banned="1"]' ).length;
+				var empty  = modal.querySelector( '.levers-banlog-empty' );
+				var table  = modal.querySelector( '.levers-banlog-table' );
 				if ( empty ) { empty.style.display = rows ? 'none' : 'block'; }
 				if ( table ) { table.style.display = rows ? '' : 'none'; }
+				// The link badge counts bans only, matching render_extra().
 				document.querySelectorAll( '.levers-banlog-count' ).forEach( function ( el ) {
-					el.textContent = rows ? ' (' + rows + ')' : '';
+					el.textContent = banned ? ' (' + banned + ')' : '';
 				} );
 			}
 
